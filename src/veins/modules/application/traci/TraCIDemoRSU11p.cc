@@ -64,14 +64,38 @@ void TraCIDemoRSU11p::onRM(ReportMessage* frame)
 void TraCIDemoRSU11p::onTask(Task* frame)
 {
     Task* newTask = check_and_cast<Task*>(frame);
-    char s[] = "";
-    //    strcpy(s, newTask->getDecision());
-    //    p = strtok(s, delim);
-    std::cout << "receive Decision" << typeid(newTask->getDecision()).name() << std::endl;
-    //    while(p){
-    //        std::cout << p << std::endl;
-    //        p = strtok(NULL, delim);
-    //    }
+    char *decision = new char[strlen(newTask->getDecision())+1];
+    strcpy(decision, newTask->getDecision());
+    char delims[] = ";";
+    char *result = NULL;
+    std::cout << "receive Decision " << newTask->getDecision() << ' ' << decision << std::endl;
+    result = strtok( decision, delims );
+    while( result != NULL ) {
+//        printf( "result is \"%s\"\n", result );
+        std::string tmp = result;
+        size_t pos = tmp.find("|");
+        std::string temp = tmp.substr(0, pos);
+        std::cout<< "if myID " << myId << ' ' << temp << std::endl;
+        if (myId == atol(temp.c_str())){
+//            std::cout << "same with my ID" << std::endl;
+            std::string ifRun = tmp.substr(pos + 1, tmp.length() - 1);
+            size_t pos2 = ifRun.find(":");
+            std::string des = ifRun.substr(pos2 + 1, ifRun.length() - 1);
+            if(des == "true"){
+                std::cout << "operate here" << endl;
+            }
+            break;
+        }
+
+//        char* result2 = NULL;
+//        result2 = strtok(result, delims2);
+//        std::cout << "if myID " << myId << ' ' << result2 << std::endl;
+//        if (myId == atol(result2)){
+//            std::cout << "same with my ID" << std::endl;
+//            break;
+//        }
+        result = strtok( NULL, delims );
+    }
     std::cout << "receive Task " << newTask->getSenderPos() << std::endl;
 }
 

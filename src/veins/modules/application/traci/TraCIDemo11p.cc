@@ -143,13 +143,14 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     }
     if (U_Random() > 0.5){
         // generate Task Message
+        std::cout<< "ExternalId" << mobility->getExternalId().c_str() << std::endl;
         std::cout<< "generate tasks" << std::endl;
         Task* task = new Task();
         populateWSM(task);
         task->setSenderAddress(myId);
-        task->setCPU(possion());
-        task->setMem(possion());
-        task->setStorage(possion());
+        task->setCPU(U_Random() * 28 + 2);
+        task->setMem(U_Random() * 900 + 300);
+        task->setStorage(U_Random() * 900 + 300);
 
         std::string tmp = "";
         std::map<LAddress::L2Type, Coord>::iterator it;
@@ -172,7 +173,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
             hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, "global_share_memory");
         }
         pBuffer = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-        int result = system("D:\\scoop\\apps\\python38\\current\\python.exe F:\\test.py 123");
+        int result = system("D:\\scoop\\apps\\python38\\current\\python.exe test.py 123");
         if ((char*)pBuffer != NULL){
             std::cout << "Calling Python2 " << (char*)pBuffer << std::endl;
         }

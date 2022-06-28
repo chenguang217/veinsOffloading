@@ -218,7 +218,8 @@ double ObstacleControl::calculateAttenuation(const Coord& senderPos, const Coord
         throw cRuntimeError("Unable to use SimpleObstacleShadowing: No obstacle types have been configured");
     }
     if (obstacleOwner.size() == 0) {
-        throw cRuntimeError("Unable to use SimpleObstacleShadowing: No obstacles have been added");
+//        throw cRuntimeError("Unable to use SimpleObstacleShadowing: No obstacles have been added");
+        return 1;
     }
 
     // return cached result, if available

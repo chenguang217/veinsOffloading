@@ -35,6 +35,8 @@ public:
 protected:
     std::map<LAddress::L2Type, simtime_t> connectedNodes;
     std::map<LAddress::L2Type, Coord> NodePositions;
+    long mem;
+    long cpu;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;

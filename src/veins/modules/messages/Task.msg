@@ -33,4 +33,5 @@ packet Task extends BaseFrame1609_4 {
     double mem;
     double storage;
     string decision;
+    Coord deadlinePos;
 }

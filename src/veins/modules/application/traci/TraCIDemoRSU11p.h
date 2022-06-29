@@ -35,13 +35,16 @@ public:
 protected:
     std::map<LAddress::L2Type, simtime_t> connectedNodes;
     std::map<LAddress::L2Type, Coord> NodePositions;
+    std::list<std::string>taskQueue;
     long mem;
     long cpu;
+    double wait;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;
     void onRM(ReportMessage* rm) override;
     void onTask(Task* frame) override;
+
     void handleSelfMsg(cMessage* msg) override;
 };
 

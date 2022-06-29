@@ -28,4 +28,7 @@ packet ReportMessage extends BaseFrame1609_4 {
     Coord senderPos;
     LAddress::L2Type senderAddress = -1;
     int senderType = 0;
+    long cpu;
+    long mem;
+    long wait;
 }

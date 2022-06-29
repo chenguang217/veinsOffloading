@@ -73,6 +73,9 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
         lastReceiveAt = simTime();
         LAddress::L2Type sender = rm->getSenderAddress();
         Coord pos = rm->getSenderPos();
+        long rsuCpu = rm->getCpu();
+        long rsuMem = rm->getMem();
+        double rsuWait = rm->getWait();
         ReportMessage* newRM = new ReportMessage();
         populateWSM(newRM);
         newRM->setSenderAddress(myId);
@@ -84,6 +87,10 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
         if(it == connectedRSUs.end()) {
             connectedRSUs.insert(std::make_pair(sender, lastReceiveAt));
             RSUPositions.insert(std::make_pair(sender, pos));
+            RSUcpus.insert(std::make_pair(sender, rsuCpu));
+            RSUmems.insert(std::make_pair(sender, rsuMem));
+            RSUwaits.insert(std::make_pair(sender, rsuWait));
+            
         }
         std::cout << "Vehicle " << myId << " find RSU "<< sender << " at position " << pos << ", now have connectedRSUs " << connectedRSUs.size() << " RSUPositions " << RSUPositions.size() << std::endl;
         std::map<LAddress::L2Type, Coord>::iterator itCoord=RSUPositions.begin();
@@ -91,6 +98,14 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
             std::cout << "Vehicle " << myId << " now have RSU" << it->first << " at " << itCoord->second << std::endl;
             itCoord++;
         }
+    }
+}
+
+void TraCIDemo11p::onTask(Task* frame)
+{
+    Task* newTask = check_and_cast<Task*>(frame);
+    if (newTask->getSenderType() == 1) {
+        std::cout << "task finished" << std::endl;
     }
 }
 
@@ -130,20 +145,30 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 {
     std::map<LAddress::L2Type, simtime_t>::iterator it;
     std::map<LAddress::L2Type, Coord>::iterator itCoord=RSUPositions.begin();
+    std::map<LAddress::L2Type, long>::iterator itCpu=RSUcpus.begin();
+    std::map<LAddress::L2Type, long>::iterator itMem=RSUmems.begin();
+    std::map<LAddress::L2Type, long>::iterator itWait=RSUwaits.begin();
     for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
         if (simTime() - it->second >= 5) {
             std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
             connectedRSUs.erase(it++);
             RSUPositions.erase(itCoord++);
+            RSUcpus.erase(itCpu++);
+            RSUmems.erase(itMem++);
+            RSUwaits.erase(itWait++);
             if (it == connectedRSUs.end()) {
                 break;
             }
         }
         itCoord++;
+        itCpu++;
+        itMem++;
+        itWait++;
     }
     if (U_Random() > 0.5){
         // generate Task Message
-        std::cout<< "ExternalId" << mobility->getExternalId().c_str() << std::endl;
+        std::string externalId = mobility->getExternalId();
+        std::string roadId = mobility->getRoadId();
         std::cout<< "generate tasks" << std::endl;
         Task* task = new Task();
         populateWSM(task);
@@ -154,16 +179,26 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 
         std::string tmp = "";
         std::map<LAddress::L2Type, Coord>::iterator it;
+        // ****add cpu mem wait in decision string
+        std::map<LAddress::L2Type, long>::iterator itCpu = RSUcpus.begin();
+        std::map<LAddress::L2Type, long>::iterator itMem = RSUmems.begin();
+        std::map<LAddress::L2Type, long>::iterator itWait = RSUwaits.begin();
+        std::string RSUinfo = "";
         for(it = RSUPositions.begin(); it != RSUPositions.end(); it++) {
-            if (it == RSUPositions.begin()) {
-                tmp = tmp + toString(it->first) + "|" + toString(it->second) + ":true;";
-            }
-            else {
-                tmp = tmp + toString(it->first) + "|" + toString(it->second) + ":false;";
-            }
+            RSUinfo = RSUinfo + toString(itCpu->first) + ":" + toString(it->second) + "*" + toString(itCpu->second) + "*" + toString(itMem->second) + "*" + toString(itWait->second) + ";";
+            itCpu++;
+            itMem++;
+            itWait++;
+            // if (it == RSUPositions.begin()) {
+            //     tmp = tmp + toString(it->first) + "|" + toString(it->second) + ":true;";
+            // }
+            // else {
+            //     tmp = tmp + toString(it->first) + "|" + toString(it->second) + ":false;";
+            // }
         }
+        // task->setDecision((char*)tmp.data());
         std::cout << "decisions " << tmp << std::endl;
-        task->setDecision((char*)tmp.data());
+        std::cout << "RSUInfo " << RSUinfo << std::endl;
         LPVOID pBuffer;
         std::string strMapName("global_share_memory");
         HANDLE hMap = NULL;
@@ -173,10 +208,27 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
             hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, "global_share_memory");
         }
         pBuffer = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-        int result = system("D:\\scoop\\apps\\python38\\current\\python.exe test.py 123");
+
+        LPVOID pBufferDecision;
+        HANDLE hMapDecision = NULL;
+
+        hMapDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "decision");
+        if (hMapDecision == NULL) {
+            hMapDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, "decision");
+        }
+        pBufferDecision = MapViewOfFile(hMapDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe test.py 123 " + externalId + " " + roadId + " " + RSUinfo + " " + toString(curPosition);
+        std::cout << "command " << command << std::endl;
+        int result = system(command.c_str());
         if ((char*)pBuffer != NULL){
             std::cout << "Calling Python2 " << (char*)pBuffer << std::endl;
         }
+        if ((char*)pBufferDecision != NULL){
+            std::cout << "Calling Python3 " << (char*)pBufferDecision << std::endl;
+        }
+        task->setName((char*)pBuffer);
+        task->setDecision((char*)pBufferDecision);
         scheduleAt(simTime() + uniform(0.01, 0.2), task->dup());
     }
     DemoBaseApplLayer::handlePositionUpdate(obj);
@@ -207,11 +259,11 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     }
 }
 
-int possion()  /* 产生一个泊松分布的随机数，Lamda为总体平均数*/
+int possion()  /* 锟斤拷锟斤拷一锟斤拷锟斤拷锟缴分诧拷锟斤拷锟斤拷锟斤拷锟斤拷锟絃amda为锟斤拷锟斤拷平锟斤拷锟斤拷*/
 {
     int Lambda = 20, k = 0;
     long double p = 1.0;
-    long double l=exp(-Lambda);  /* 为了精度，才定义为long double的，exp(-Lambda)是接近0的小数*/
+    long double l=exp(-Lambda);  /* 为锟剿撅拷锟饺ｏ拷锟脚讹拷锟斤拷为long double锟侥ｏ拷exp(-Lambda)锟角接斤拷0锟斤拷小锟斤拷*/
     // printf("%.15Lfn",l);
     while (p>=l)
     {
@@ -222,7 +274,7 @@ int possion()  /* 产生一个泊松分布的随机数，Lamda为总体平均数*/
     return k-1;
 }
 
-double U_Random()   /* 产生一个0~1之间的随机数 */
+double U_Random()   /* 锟斤拷锟斤拷一锟斤拷0~1之锟斤拷锟斤拷锟斤拷锟斤拷 */
 {
     double f;
     f = (float)(rand() % 100);

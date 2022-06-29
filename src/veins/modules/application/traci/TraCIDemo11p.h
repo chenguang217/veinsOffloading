@@ -59,11 +59,18 @@ protected:
     int currentSubscribedServiceId;
     std::map<LAddress::L2Type, simtime_t> connectedRSUs;
     std::map<LAddress::L2Type, Coord> RSUPositions;
+    std::map<LAddress::L2Type, long>RSUcpus;
+    std::map<LAddress::L2Type, long>RSUmems;
+    std::map<LAddress::L2Type, long>RSUwaits;
+    long mem;
+    long cpu;
+    long wait;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;
     void onRM(ReportMessage* rm) override;
+    void onTask(Task* frame) override;
 
     void handleSelfMsg(cMessage* msg) override;
     void handlePositionUpdate(cObject* obj) override;

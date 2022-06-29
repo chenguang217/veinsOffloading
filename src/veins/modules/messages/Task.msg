@@ -29,9 +29,11 @@ packet Task extends BaseFrame1609_4 {
     Coord senderPos;
     LAddress::L2Type senderAddress = -1;
     int senderType = 0;
+    string name;
     double CPU;
     double mem;
     double storage;
+    double operationTime;
     string decision;
     Coord deadlinePos;
 }

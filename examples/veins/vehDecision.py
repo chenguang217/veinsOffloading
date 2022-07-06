@@ -65,6 +65,14 @@ if __name__ == "__main__":
     # with open('node2RSU.json', 'r') as file:
     #     node2RSU = json.loads(file.read().strip())
     # deadLinePosition = random.choice(roads[roads.index(road):]) # 把deadline加入到新的共享内存中
+
+    deadLinePosition = '23339459'
+    deadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
+    boundaries = net.getBoundary()
+    send(str(deadPosition[0] - boundaries[0]), 'deadLinePosX')
+    send(str((boundaries[3] - boundaries[1]) - (deadPosition[1] - boundaries[1])), 'deadLinePosY')
+    
+
     # for road in roads[roads.index(road):roads.index(deadLinePosition)]:
     #     target = net.getEdge(road).getToNode().getCoord()
     #     eta = calETA(net, begin, target, externalID)
@@ -75,6 +83,7 @@ if __name__ == "__main__":
     for rsu in RSUs:
         rsuX = float(rsu['rsuLocation'][1:-1].split(',')[0])
         rsuY = float(rsu['rsuLocation'][1:-1].split(',')[1])
+        print(position)
         X = float(position[1:-1].split(',')[0])
         Y = float(position[1:-1].split(',')[1])
         distance = math.sqrt((rsuX - X) ** 2 + (rsuY - Y) ** 2)

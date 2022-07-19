@@ -256,11 +256,11 @@ void TraCIMobility::changePosition(std::string objectId, std::string road_id)
     EV_DEBUG << "here3 " << speed << std::endl;
     EV_DEBUG << "tmpSpeed " << tmpSpeed << std::endl;
     //read file and use bellow function to set speed.
-    getVehicleCommandInterface()->setSpeed(tmpSpeed);
-    if (this->setHostSpeed) {
-        move.setSpeed(speed);
-        EV_DEBUG << "here4 "<< speed << std::endl;
-    }
+    // getVehicleCommandInterface()->setSpeed(tmpSpeed);
+    // if (this->setHostSpeed) {
+    //     move.setSpeed(speed);
+    //     EV_DEBUG << "here4 "<< speed << std::endl;
+    // }
     fixIfHostGetsOutside();
     updatePosition();
 }

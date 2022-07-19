@@ -22,6 +22,15 @@
 
 #pragma once
 
+#include <stdlib.h>
+#include <Windows.h>
+#include <ctime>
+#include <time.h>
+#include <sstream>
+#include <cstdlib>
+#include <string>
+#include <math.h>
+
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
 
 namespace veins {
@@ -36,8 +45,9 @@ protected:
     std::map<LAddress::L2Type, simtime_t> connectedNodes;
     std::map<LAddress::L2Type, Coord> NodePositions;
     std::list<std::string>taskQueue;
-    long mem;
-    long cpu;
+    simtime_t taskWait;
+    double mem;
+    double cpu;
     double wait;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

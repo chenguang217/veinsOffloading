@@ -4,14 +4,10 @@ import mmap
 import os
 import random
 import sys
-from turtle import pos
 
 import sumolib
 
-size = (2600, 3000)
-
-theoryCPUMax = 10
-theoryCPUMin = 0.2
+size = (9000, 7000)
 
 #写入一次
 def send(s, file_name):
@@ -41,8 +37,8 @@ def calETA(net, begin, target, externalID):
 
 def relay(position, target):
     relay0 = []
-    for i in range(round(size[0] / 1000)):
-        for j in range(round(size[1] / 1000)):
+    for i in range(int(size[0] / 1000)):
+        for j in range(int(size[1] / 1000)):
             distance = math.sqrt((position[0] - i * 1000 - 500) ** 2 + (position[1] - j * 1000 - 500) ** 2)
             if distance <= 1000:
                 relay0.append([i * 1000 + 500, j * 1000 + 500])
@@ -59,16 +55,60 @@ def relay(position, target):
         finalRelay.append([finalRelay[-1][0] + 1000, finalRelay[-1][1]])
     for i in range(abs(int(ylength / 1000))):
         finalRelay.append([finalRelay[-1][0], finalRelay[-1][1] + 1000])
-    return finalRelay
+    print(finalRelay)
 
-def baseLine_ShortestFirst(position):
+RSUs = []
+
+if __name__ == "__main__":
+    info = sys.argv[1]
+    net = sumolib.net.readNet('erlangen.net.xml')
+    externalID = sys.argv[2]
+    road = sys.argv[3]
+    rsuInfo = sys.argv[4]
+    position = sys.argv[5]
+    rsuRaw = rsuInfo.split(';')
+    for info in rsuRaw:
+        if len(info) != 0:
+            rsuId = info.split(':')[0]
+            rsuLocation = info.split(':')[1].split('*')[0]
+            rsuCpu = info.split(':')[1].split('*')[1]
+            rsuMem = info.split(':')[1].split('*')[2]
+            rsuWait = info.split(':')[1].split('*')[3]
+            RSUs.append({'rsuId': rsuId, 'rsuLocation': rsuLocation, 'rsuCpu': rsuCpu, 'rsuMem': rsuMem, 'rsuWait': rsuWait})
+    begin = net.getEdge(road).getFromNode().getCoord()
+    roads = []
+    with open('routesV/' + externalID + '.csv', 'r') as file:
+        while True:
+            line = file.readline()
+            if len(line) == 0:
+                break
+            roads.append(line.split(' ')[0].strip())
+    # -----------generate deadline-----------
+
+    with open('node2RSU.json', 'r') as file:
+        node2RSU = json.loads(file.read().strip())
+    deadLinePosition = random.choice(roads[roads.index(road):]) # 把deadline加入到新的共享内存中
+    print(deadLinePosition)
+
+    deadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
+    boundaries = net.getBoundary()
+    send(str(deadPosition[0] - boundaries[0]), externalID + 'deadLinePosX')
+    send(str((boundaries[3] - boundaries[1]) - (deadPosition[1] - boundaries[1])), externalID + 'deadLinePosY')
+    
+
+    # for road in roads[roads.index(road):roads.index(deadLinePosition)]:
+    #     target = net.getEdge(road).getToNode().getCoord()
+    #     eta = calETA(net, begin, target, externalID)
+
+    # -----------decision process-----------
     minimum = 10000
     rsuTarget = ''
     for rsu in RSUs:
         rsuX = float(rsu['rsuLocation'][1:-1].split(',')[0])
         rsuY = float(rsu['rsuLocation'][1:-1].split(',')[1])
-        X = position[0]
-        Y = position[1]
+        print(position)
+        X = float(position[1:-1].split(',')[0])
+        Y = float(position[1:-1].split(',')[1])
         distance = math.sqrt((rsuX - X) ** 2 + (rsuY - Y) ** 2)
         if minimum > distance:
             minimum = distance
@@ -80,115 +120,9 @@ def baseLine_ShortestFirst(position):
             decision += 'true;'
         else:
             decision += 'false;'
-    return decision
-
-
-RSUs = []
-
-if __name__ == "__main__":
-    info = sys.argv[1]
-    net = sumolib.net.readNet('erlangen.net.xml')
-    externalID = sys.argv[2]
-    road = sys.argv[3]
-    rsuInfo = sys.argv[4]
-    position = sys.argv[5]
-    cpuRequirement = float(sys.argv[6])
-    rsuRaw = rsuInfo.split(';')
-    for info in rsuRaw:
-        if len(info) != 0:
-            rsuId = info.split(':')[0]
-            rsuLocation = info.split(':')[1].split('*')[0]
-            rsuCpu = info.split(':')[1].split('*')[1]
-            rsuMem = info.split(':')[1].split('*')[2]
-            rsuWait = info.split(':')[1].split('*')[3]
-            RSUs.append({'rsuId': rsuId, 'rsuLocation': rsuLocation, 'rsuCpu': rsuCpu, 'rsuMem': rsuMem, 'rsuWait': rsuWait})
-    begin = net.getEdge(road).getToNode().getCoord()
-    roads = []
-    with open('routesV/' + externalID + '.csv', 'r') as file:
-        while True:
-            line = file.readline()
-            if len(line) == 0:
-                break
-            roads.append(line.split(' ')[0].strip())
-
-    # -----------generate deadline-----------
-
-    deadLinePosition = random.choice(roads[roads.index(road):]) # 把deadline加入到新的共享内存中
-    # deadLinePosition = '4006702#0'
-    deadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
-    boundaries = net.getBoundary()
-    deadPosition = [deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]]
-    # print([deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]])
-    # print(str(deadPosition[0] - boundaries[0]), str(boundaries[3] - deadPosition[1]))
-    send(str(deadPosition[0]), externalID + 'deadLinePosX')
-    send(str(deadPosition[1]), externalID + 'deadLinePosY')
-
-    # -----------eta calculation-----------
-
-    etaRaw = []
-    etaFinal = []
-    etaStart = 0
-    with open('eta/' + externalID + '.csv', 'r') as file:
-        while True:
-            line = file.readline()
-            if len(line) == 0:
-                break
-            etaRaw.append(line.strip().split(','))
-    flag = False
-    for i in range(len(etaRaw)):
-        tmpNode = net.getEdge(etaRaw[i][0]).getFromNode().getCoord()
-        tmpNode = [tmpNode[0] - boundaries[0], boundaries[3] - tmpNode[1]]
-        if etaRaw[i][0] == road:
-            etaFinal.append([tmpNode, 0])
-            etaStart = float(etaRaw[i][1])
-            flag = True
-        elif etaRaw[i][0] == deadLinePosition:
-            etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
-            break
-        elif flag:
-            etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
-    # for road in roads[roads.index(road):roads.index(deadLinePosition)]:
-    #     target = net.getEdge(road).getToNode().getCoord()
-    #     eta = calETA(net, begin, target, externalID)
-
-    # -----------decision process-----------
-
-    # prune RSUs
-    # cpuRequirement / theoryCPU. compare with eta. prune the RSU with long distance
-
-    position = [float(position.replace('(', '').replace(')', '').split(',')[0]), float(position.replace('(', '').replace(')', '').split(',')[1])]
-    theroMinTime = cpuRequirement / theoryCPUMax
-    for eta in etaFinal:
-        if eta[1] > theroMinTime:
-            possibleNearest = eta[0]
-            break
-    else:
-        possibleNearest = etaFinal[-1][0]
-    theoryMaxTime = cpuRequirement / theoryCPUMin
-    for eta in etaFinal:
-        if eta[1] > theoryMaxTime:
-            possibleFarest = eta[0]
-            break
-    else:
-        possibleFarest = etaFinal[-1][0]
-    # print(possibleNearest, possibleFarest)
-    tmpRoads = [[net.getEdge(road).getFromNode().getCoord()[0] - boundaries[0], boundaries[3] - net.getEdge(road).getFromNode().getCoord()[1]] for road in roads]
-
-    # -----------get possible RSU-----------
-
-    with open('node2RSUtest.json', 'r') as file:
-        node2RSU = json.loads(file.read().strip())
-    usableRSUs = []
-    for tmpPosition in tmpRoads[tmpRoads.index(possibleNearest):tmpRoads.index(possibleFarest) + 1]:
-        for tmpNode in node2RSU[str(tmpPosition)]:
-            if tmpNode not in usableRSUs:
-                usableRSUs.append(tmpNode)
-    possibleRSU = ''
-    for rsu in usableRSUs:
-        possibleRSU +='(' + str(rsu[0]) + ',' + str(rsu[1]) + ',3);'
     send(externalID + ''.join(random.sample('zyxwvutsrqponmlkjihgfedcba',5)), externalID + 'global_share_memory')
-    send(possibleRSU, externalID + 'possibleRSU')
-    # print(possibleRSU)
+    send(decision, externalID + 'decision')
+    exit()
 
     
 

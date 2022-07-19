@@ -34,10 +34,20 @@ def recieve(file_name):
 
 if __name__ == "__main__":
     position = sys.argv[1]
-    taskList = sys.argv[2]
-    mem = sys.argv[3]
-    wait = sys.argv[4]
-    simTime = sys.argv[5]
+    taskList = sys.argv[2].replace(' ', '')
+    cpu = sys.argv[3]
+    mem = sys.argv[4]
+    wait = sys.argv[5]
+    simTime = sys.argv[6]
     with open('RSUlog/' + position, 'a') as file:
-        print(bytes(taskList, 'utf-8'))
-        file.write(taskList.replace(' ', '') + ',' + mem + ',' + wait + ',' + simTime + '\n')
+        # print(bytes(taskList, 'utf-8'))
+        file.write(taskList.replace(' ', '') + ',' + mem + ',' + str(float(wait) - float(simTime)) + ',' + simTime + '\n')
+    with open('rsus.csv', 'r+') as file:
+        rsuList = file.readlines()
+    for i in range(len(rsuList)):
+        if rsuList[i].split(' ')[0] == position:
+            rsuList[i] = position + ' ' + cpu + ' ' + mem + ' ' + str(float(wait) - float(simTime)) + '\n'
+    with open('rsus.csv', 'w+') as file:
+        file.writelines(rsuList)
+                
+        

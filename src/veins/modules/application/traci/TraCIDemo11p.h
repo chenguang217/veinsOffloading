@@ -29,6 +29,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <string>
+#include <math.h>
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
 
@@ -61,10 +62,11 @@ protected:
     std::map<LAddress::L2Type, Coord> RSUPositions;
     std::map<LAddress::L2Type, long>RSUcpus;
     std::map<LAddress::L2Type, long>RSUmems;
-    std::map<LAddress::L2Type, long>RSUwaits;
+    std::map<LAddress::L2Type, simtime_t>RSUwaits;
     long mem;
     long cpu;
     long wait;
+    int ifSend = 0;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

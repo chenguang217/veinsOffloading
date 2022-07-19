@@ -27,6 +27,13 @@
 using namespace veins;
 
 Define_Module(veins::TraCIDemoRSU11p);
+int maxRate = 30;
+
+template<typename T> std::string toString(const T& t) {
+    std::ostringstream oss;
+    oss << t;
+    return oss.str();
+}
 
 void TraCIDemoRSU11p::initialize(int stage)
 {
@@ -41,6 +48,7 @@ void TraCIDemoRSU11p::initialize(int stage)
         rm->setSenderPos(curPosition);
         rm->setSenderType(0);
         scheduleAt(simTime() + uniform(0.01, 0.2), rm);
+        taskWait = 0;
     }
 }
 
@@ -67,50 +75,163 @@ void TraCIDemoRSU11p::onRM(ReportMessage* frame)
 void TraCIDemoRSU11p::onTask(Task* frame)
 {
     Task* newTask = check_and_cast<Task*>(frame);
-    char *decision = new char[strlen(newTask->getDecision())+1];
-    strcpy(decision, newTask->getDecision());
+    // std::cout << "here3 " << newTask->getTarget() << " " << curPosition  << std::endl;
+    char *decision = "";
+    
+    // char *decision = new char[strlen(newTask->getDecision())+1];
+    // strcpy(decision, newTask->getDecision());
     std::string taskName = newTask->getName();
+    char *possibleRSUs = new char[strlen(newTask->getPossibleRSUs())+1];
+    strcpy(possibleRSUs, newTask->getPossibleRSUs());
     char delims[] = ";";
     char *result = NULL;
+    std::string rsuInfo = "";
+    result = strtok( possibleRSUs, delims );
+    if (toString(newTask->getTarget()) == toString(curPosition)){
+        // proxyMode
+        std::string externalId = newTask->getExternalId();
+        while(result != NULL){
+            std::ifstream infile("rsus.csv");
+            std::string line;
+            while (getline(infile, line)){
+                std::stringstream ss(line);
+                std::string token;
+                ss >> token;
+                if(token == result){
+                    rsuInfo += token + ":";
+                    ss >> token;
+                    rsuInfo += token + "*";
+                    ss >> token;
+                    rsuInfo += token + "*";
+                    ss >> token;
+                    rsuInfo += token + ";";
+                    break;
+                }
+            }
+            result = strtok( NULL, delims );
+        }
+        LPVOID decision;
+        HANDLE hMapDecision = NULL;
+        hMapDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "decision").c_str());
+        if (hMapDecision == NULL) {
+            hMapDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "decision").c_str());
+        }
+        decision = MapViewOfFile(hMapDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+        LPVOID relay;
+        HANDLE hMapRelay = NULL;
+        hMapRelay = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "relay").c_str());
+        if (hMapRelay == NULL) {
+            hMapRelay = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "relay").c_str());
+        }
+        relay = MapViewOfFile(hMapRelay, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecision.py " + rsuInfo + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition);
+        std::cout << "rsuInfo " << command << std::endl;
+        int result = system(command.c_str());
+        newTask->setTarget("");
+        newTask->setDecision((char*)decision);
+        newTask->setRelay((char*)relay);
+        double distance = sqrt(pow(newTask->getSenderPos().x - curPosition.x, 2) + pow(newTask->getSenderPos().y - curPosition.y, 2));
+        double transmissionTime = 0;
+        if (5 * log2(1 + 250 / distance) > 30){
+            transmissionTime = newTask->getMem() * 8 / 1000 / 30;
+        } else {
+            transmissionTime = newTask->getMem() * 8 / 1000 / (5 * log2(1 + 250 / distance));
+        }
+        std::cout << "transmissionTime " << transmissionTime << " decision " << (char*)decision << std::endl;
+        newTask->setTransmissionTime(transmissionTime);
+        scheduleAt(simTime() + transmissionTime, newTask->dup());
+    }
+    else if (toString(newTask->getTarget()) == "" && newTask->getSenderType() == 0){
+        // receive proxied task
+        // std::string relays = newTask->getRelay();
+        std::string decision = newTask->getDecision();
+        decision.erase(std::remove(decision.begin(), decision.end(), ' '), decision.end());
+        // std::cout << "here4 " << decision << " relays" << std::endl;
+        if(decision == toString(curPosition)){
+            // operate here
+            double taskCpu = newTask->getCPU();
+            double taskMem = newTask->getMem();
+            double cpuTmp = cpu;
+            double operationTime = taskCpu / cpuTmp;
+            // wait += operationTime;
+            std::cout << "operate here " << curPosition << " , task name is " << taskName << " operation time " << operationTime << endl;
+            newTask->setSenderType(1);
+            newTask->setOperationTime(operationTime);
+            taskQueue.push_back(taskName);
+            taskWait += operationTime;
+            scheduleAt(taskWait, newTask->dup());
+        }
+        else if (toString(newTask->getRelay()) != ""){
+            // parse relay
+            char *relays = new char[strlen(newTask->getRelay())+1];
+            strcpy(relays, newTask->getRelay());
+            
+            result = strtok(relays, delims);
+            while( result != NULL ) {
+                std::string tmpRelay = toString(result);
+                tmpRelay.erase(std::remove(tmpRelay.begin(), tmpRelay.end(), ' '), tmpRelay.end());
+                // std::cout << "here4 " << tmpRelay << " " << toString(curPosition) << std::endl;
+                if(tmpRelay == toString(curPosition)){
+                    //relay node
+                    double relayTime = newTask->getMem() * 8 / 1000 / maxRate;
+                    std::cout << "relay here " << curPosition << " time " << relayTime << std::endl;
+                    scheduleAt(simTime() + relayTime, newTask->dup());
+                    break;
+                }
+                result = strtok( NULL, delims );
+            }
+        }
+    }
     // std::cout << "receive Decision " << newTask->getDecision() << ' ' << decision << std::endl;
     // ****parse cpu mem wait in new decision string
-    result = strtok( decision, delims );
-    while( result != NULL ) {
-        std::string tmp = result;
-        size_t pos = tmp.find("|");
-        std::string temp = tmp.substr(0, pos);
-        std::cout<< "if myID " << myId << ' ' << temp << std::endl;
-        if (myId == atol(temp.c_str())){
-            std::string ifRun = tmp.substr(pos + 1, tmp.length() - 1);
-            size_t pos2 = ifRun.find(":");
-            std::string des = ifRun.substr(pos2 + 1, ifRun.length() - 1);
-            if(des == "true"){
-                std::cout << "operate here, task name is " << taskName << endl;
-                double taskCpu = newTask->getCPU();
-                double taskMem = newTask->getMem();
-                double cpuTmp = cpu;
-                double operationTime = taskCpu / cpuTmp;
-                wait += operationTime;
-                std::cout << "task cpu " << taskCpu << " cpu capacity " << cpuTmp << " operation time " << operationTime << " wait " << wait << std::endl;
-                newTask->setSenderType(1);
-                newTask->setOperationTime(operationTime);
-                taskQueue.push_back(taskName);
-                scheduleAt(simTime() + wait, newTask->dup());
+    
+//     result = strtok( decision, delims );
+//     while( result != NULL ) {
+//         std::string tmp = result;
+//         size_t pos = tmp.find("|");
+//         std::string temp = tmp.substr(0, pos);
+//         std::cout<< "if myID " << myId << ' ' << temp << std::endl;
+//         if (myId == atol(temp.c_str())){
+//             std::string ifRun = tmp.substr(pos + 1, tmp.length() - 1);
+//             size_t pos2 = ifRun.find(":");
+//             std::string des = ifRun.substr(pos2 + 1, ifRun.length() - 1);
+//             if(des == "true"){
+//                 std::cout << "operate here, task name is " << taskName << endl;
+//                 double taskCpu = newTask->getCPU();
+//                 double taskMem = newTask->getMem();
+//                 double cpuTmp = cpu;
+//                 double operationTime = taskCpu / cpuTmp;
+//                 double distance = 0;
+//                 distance = sqrt(pow(newTask->getSenderPos().x - curPosition.x, 2) + pow(newTask->getSenderPos().y - curPosition.y, 2));
+//                 // one hop use bellow
+//                 double transmissionTime = newTask->getMem() * 8 / 1000 / (5 * log2(1 + 250 / distance));
+//                 newTask->setTransmissionTime(transmissionTime);
+//                 mem = mem - taskMem;
+//                 wait += operationTime + transmissionTime;
+                
 
-            }
-            break;
-        }
+//                 std::cout << "task cpu " << taskCpu << " cpu capacity " << cpuTmp << " operation time " << operationTime << " wait " << wait << std::endl;
+//                 newTask->setSenderType(1);
+//                 newTask->setOperationTime(operationTime);
+//                 taskQueue.push_back(taskName);
+//                 scheduleAt(simTime() + wait, newTask->dup());
 
-//        char* result2 = NULL;
-//        result2 = strtok(result, delims2);
-//        std::cout << "if myID " << myId << ' ' << result2 << std::endl;
-//        if (myId == atol(result2)){
-//            std::cout << "same with my ID" << std::endl;
-//            break;
-//        }
-        result = strtok( NULL, delims );
-    }
-    std::cout << "receive Task " << newTask->getSenderPos() << std::endl;
+//             }
+//             break;
+//         }
+
+// //        char* result2 = NULL;
+// //        result2 = strtok(result, delims2);
+// //        std::cout << "if myID " << myId << ' ' << result2 << std::endl;
+// //        if (myId == atol(result2)){
+// //            std::cout << "same with my ID" << std::endl;
+// //            break;
+// //        }
+//         result = strtok( NULL, delims );
+//     }
+    // std::cout << "receive Task " << newTask->getSenderPos() << std::endl;
 }
 
 
@@ -118,11 +239,14 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
 {
     if (ReportMessage* rm = dynamic_cast<ReportMessage*>(msg)){
         // std::cout << curPosition << std::endl;
+        if(simTime() > taskWait){
+            taskWait = simTime();
+        }
         rm->setSenderAddress(myId);
         rm->setSenderPos(curPosition);
         rm->setCpu(cpu);
         rm->setMem(mem);
-        rm->setWait(wait);
+        rm->setWait(taskWait - simTime());
         scheduleAt(simTime() + 2, rm);
         sendDown(rm->dup());
 
@@ -139,20 +263,71 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
             itCoord++;
         }
         findHost()->getDisplayString().setTagArg("t", 0, connectedNodes.size());
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe RSUState.py " + toString(curPosition) + " \"";
+        for(auto const &i: taskQueue) {
+            command += i + ",";
+        }
+        command += + "\" " + toString(cpu) + " " + toString(mem) + " " + toString(taskWait) + " " + toString(simTime());
+        int result = system(command.c_str());
     }
     else if (Task* newTask = dynamic_cast<Task*>(msg)) {
-        std::list<std::string>::iterator it;
-        for(it = taskQueue.begin(); it != taskQueue.end(); ){
-            if (*it == newTask->getName()){
-                it = taskQueue.erase(it);
-            } else {
-                ++it;
+        std::string tmpDes = toString(newTask->getDecision());
+        tmpDes.erase(std::remove(tmpDes.begin(), tmpDes.end(), ' '), tmpDes.end());
+        if(newTask->getSenderType() == 1){
+            // send back
+            std::list<std::string>::iterator it;
+            for(it = taskQueue.begin(); it != taskQueue.end(); ){
+                if (*it == newTask->getName()){
+                    it = taskQueue.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            bool flag = true;
+            std::map<LAddress::L2Type, Coord>::iterator it2;
+            for(it2 = NodePositions.begin(); it2 != NodePositions.end(); it2++) {
+                std::cout << "scan veh " << it2->first << std::endl;
+                if(it2->first == newTask->getSenderAddress()){
+                    flag = false;
+                    newTask->setSenderPos(curPosition);
+                    double operationTime = newTask->getOperationTime();
+                    double transmissionTime = newTask->getTransmissionTime();
+                    double taskMem = newTask->getMem();
+                    mem += taskMem;
+                    std::cout << "number of task is " << taskQueue.size() << " wait time is " << taskWait << std::endl;
+                    sendDown(newTask->dup());
+                }
+            }
+            if(flag){
+                std::cout << "task fininshed, but vehicle not arrive" << std::endl;
+                scheduleAt(simTime() + 1, newTask);
             }
         }
-        double operationTime = newTask->getOperationTime();
-        wait -= operationTime;
-        std::cout << "number of task is " << taskQueue.size() << " wait time is " << wait << std::endl;
-        sendDown(newTask->dup());
+        else if(tmpDes == toString(curPosition)){
+            // just operate on this rsu
+            std::string taskName = newTask->getName();
+            std::cout << "operate here, task name is " << taskName << endl;
+            double taskCpu = newTask->getCPU();
+            double taskMem = newTask->getMem();
+            double cpuTmp = cpu;
+            double operationTime = taskCpu / cpuTmp;
+            // wait += operationTime;
+            newTask->setSenderType(1);
+            newTask->setOperationTime(operationTime);
+            taskQueue.push_back(taskName);
+            std::cout << "operationTime " << operationTime << " taskWait " << taskWait << std::endl;
+            if(simTime() > taskWait){
+                taskWait = simTime() + operationTime;
+            }
+            else{
+                taskWait += operationTime;
+            }
+            // std::cout << "here " << simTime() << " present position " << taskWait << std::endl;
+            scheduleAt(taskWait, newTask->dup());
+        }
+        else{
+            sendDown(newTask->dup());
+        }
     }
 }
 

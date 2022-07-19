@@ -34,6 +34,12 @@ packet Task extends BaseFrame1609_4 {
     double mem;
     double storage;
     double operationTime;
+    double transmissionTime;
+    string externalId;
+    string roadId;
+    string target;
     string decision;
+    string possibleRSUs;
+    string relay;
     Coord deadlinePos;
 }

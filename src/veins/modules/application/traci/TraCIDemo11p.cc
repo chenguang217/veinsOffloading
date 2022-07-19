@@ -31,8 +31,8 @@ double U_Random();
 int possion();
 
 template<typename T> std::string toString(const T& t) {
-    std::ostringstream oss;      //创建一个格式化输出流
-    oss<<t;             //把值传递到流中
+    std::ostringstream oss;
+    oss<<t;
     return oss.str();
 }
 
@@ -45,26 +45,6 @@ void TraCIDemo11p::initialize(int stage)
         currentSubscribedServiceId = -1;
         srand( (unsigned)time( NULL ) );
     }
-//    if (stage == 1) {
-//        srand((unsigned)time(NULL));
-//        int randNum = (rand()%10);
-//        std::cout<< randNum << std::endl;
-//        if (randNum > 5){
-//            LPVOID pBuffer;
-//            std::string strMapName("global_share_memory");
-//            HANDLE hMap = NULL;
-//
-//            hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "global_share_memory");
-//            if (hMap == NULL) {
-//                hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, "global_share_memory");
-//            }
-//            pBuffer = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-//            int result = system("D:\\scoop\\apps\\python38\\current\\python.exe F:\\test.py 123");
-//            DemoBaseApplLayer::handlePositionUpdate(obj);
-//            if ((char*)pBuffer != NULL)EV_DEBUG << "Calling Python2 " << (char*)pBuffer << std::endl;
-//        }
-//        scheduleAt(simTime() + uniform(0.01, 0.2), rm);
-//    }
 }
 
 void TraCIDemo11p::onRM(ReportMessage* rm)
@@ -75,7 +55,7 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
         Coord pos = rm->getSenderPos();
         long rsuCpu = rm->getCpu();
         long rsuMem = rm->getMem();
-        double rsuWait = rm->getWait();
+        simtime_t rsuWait = rm->getWait();
         ReportMessage* newRM = new ReportMessage();
         populateWSM(newRM);
         newRM->setSenderAddress(myId);
@@ -98,6 +78,7 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
             std::cout << "Vehicle " << myId << " now have RSU" << it->first << " at " << itCoord->second << std::endl;
             itCoord++;
         }
+
     }
 }
 
@@ -106,6 +87,9 @@ void TraCIDemo11p::onTask(Task* frame)
     Task* newTask = check_and_cast<Task*>(frame);
     if (newTask->getSenderType() == 1) {
         std::cout << "task finished" << std::endl;
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName();
+        std::cout << "finished " << command << std::endl;
+        int result = system(command.c_str());
     }
 }
 
@@ -147,7 +131,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     std::map<LAddress::L2Type, Coord>::iterator itCoord=RSUPositions.begin();
     std::map<LAddress::L2Type, long>::iterator itCpu=RSUcpus.begin();
     std::map<LAddress::L2Type, long>::iterator itMem=RSUmems.begin();
-    std::map<LAddress::L2Type, long>::iterator itWait=RSUwaits.begin();
+    std::map<LAddress::L2Type, simtime_t>::iterator itWait=RSUwaits.begin();
     for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
         if (simTime() - it->second >= 5) {
             std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
@@ -165,7 +149,8 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
         itMem++;
         itWait++;
     }
-    if (U_Random() > 0.5){
+    // std::cout << "position x " << curPosition.x << " if equal " << std::endl;
+    if (curPosition.x >= 2407.16 && ifSend <= 1){
         // generate Task Message
         std::string externalId = mobility->getExternalId();
         std::string roadId = mobility->getRoadId();
@@ -174,21 +159,33 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
         populateWSM(task);
         task->setSenderAddress(myId);
         task->setCPU(U_Random() * 28 + 2);
+        // task->setCPU(20);
         task->setMem(U_Random() * 900 + 300);
         task->setStorage(U_Random() * 900 + 300);
+        task->setExternalId(externalId.c_str());
+        task->setRoadId(roadId.c_str());
+        task->setSenderType(0);
 
         std::string tmp = "";
         std::map<LAddress::L2Type, Coord>::iterator it;
         // ****add cpu mem wait in decision string
         std::map<LAddress::L2Type, long>::iterator itCpu = RSUcpus.begin();
         std::map<LAddress::L2Type, long>::iterator itMem = RSUmems.begin();
-        std::map<LAddress::L2Type, long>::iterator itWait = RSUwaits.begin();
+        std::map<LAddress::L2Type, simtime_t>::iterator itWait = RSUwaits.begin();
+        double minDist = 1000;
         std::string RSUinfo = "";
         for(it = RSUPositions.begin(); it != RSUPositions.end(); it++) {
             RSUinfo = RSUinfo + toString(itCpu->first) + ":" + toString(it->second) + "*" + toString(itCpu->second) + "*" + toString(itMem->second) + "*" + toString(itWait->second) + ";";
+            double tmpDist = it->second.distance(curPosition);
+            if(tmpDist <= minDist){
+                minDist = tmpDist;
+                std::cout << toString(it->second) << std::endl;
+                task->setTarget(toString(it->second).c_str());
+            }
             itCpu++;
             itMem++;
             itWait++;
+
             // if (it == RSUPositions.begin()) {
             //     tmp = tmp + toString(it->first) + "|" + toString(it->second) + ":true;";
             // }
@@ -197,38 +194,48 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
             // }
         }
         // task->setDecision((char*)tmp.data());
-        std::cout << "decisions " << tmp << std::endl;
-        std::cout << "RSUInfo " << RSUinfo << std::endl;
         LPVOID pBuffer;
-        std::string strMapName("global_share_memory");
         HANDLE hMap = NULL;
-
-        hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "global_share_memory");
+        hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "global_share_memory").c_str());
         if (hMap == NULL) {
-            hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, "global_share_memory");
+            hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "global_share_memory").c_str());
         }
         pBuffer = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
         LPVOID pBufferDecision;
         HANDLE hMapDecision = NULL;
-
-        hMapDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "decision");
+        hMapDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "possibleRSU").c_str());
         if (hMapDecision == NULL) {
-            hMapDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, "decision");
+            hMapDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "possibleRSU").c_str());
         }
         pBufferDecision = MapViewOfFile(hMapDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe test.py 123 " + externalId + " " + roadId + " " + RSUinfo + " " + toString(curPosition);
+        LPVOID pBufferDeadlineX;
+        HANDLE hMapDeadlineX = NULL;
+        hMapDeadlineX = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "deadLinePosX").c_str());
+        if (hMapDeadlineX == NULL) {
+            hMapDeadlineX = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "deadLinePosX").c_str());
+        }
+        pBufferDeadlineX = MapViewOfFile(hMapDeadlineX, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+        LPVOID pBufferDeadlineY;
+        HANDLE hMapDeadlineY = NULL;
+        hMapDeadlineY = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "deadLinePosY").c_str());
+        if (hMapDeadlineY == NULL) {
+            hMapDeadlineY = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "deadLinePosY").c_str());
+        }
+        pBufferDeadlineY = MapViewOfFile(hMapDeadlineY, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehDecision.py 123 " + externalId + " " + roadId + " " + RSUinfo + " " + toString(curPosition) + " " + toString(task->getCPU());
         std::cout << "command " << command << std::endl;
         int result = system(command.c_str());
-        if ((char*)pBuffer != NULL){
-            std::cout << "Calling Python2 " << (char*)pBuffer << std::endl;
-        }
-        if ((char*)pBufferDecision != NULL){
-            std::cout << "Calling Python3 " << (char*)pBufferDecision << std::endl;
+        if ((char*)pBufferDeadlineX != NULL){
+            // (char*)pBufferDeadline[1:-1];
+            task->setDeadlinePos(Coord(strtod((char*)pBufferDeadlineX, NULL), strtod((char*)pBufferDeadlineY, NULL), 0));
+            ifSend++;
         }
         task->setName((char*)pBuffer);
-        task->setDecision((char*)pBufferDecision);
+        task->setPossibleRSUs((char*)pBufferDecision);
         scheduleAt(simTime() + uniform(0.01, 0.2), task->dup());
     }
     DemoBaseApplLayer::handlePositionUpdate(obj);

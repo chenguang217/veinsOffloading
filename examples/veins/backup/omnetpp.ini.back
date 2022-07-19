@@ -19,8 +19,8 @@ sim-time-limit = 200s
 **.scalar-recording = true
 **.vector-recording = true
 
-*.playgroundSizeX = 2600m
-*.playgroundSizeY = 3000m
+*.playgroundSizeX = 9000m
+*.playgroundSizeY = 7000m
 *.playgroundSizeZ = 50m
 
 
@@ -48,33 +48,12 @@ sim-time-limit = 200s
 #                                                        #
 #                                                        #
 ##########################################################
-*.rsu[0].mobility.x = 500
-*.rsu[0].mobility.y = 500
+*.rsu[0].mobility.x = 2000
+*.rsu[0].mobility.y = 2000
 *.rsu[0].mobility.z = 3
-*.rsu[1].mobility.x = 500
-*.rsu[1].mobility.y = 1500
+*.rsu[1].mobility.x = 2500
+*.rsu[1].mobility.y = 2500
 *.rsu[1].mobility.z = 3
-*.rsu[2].mobility.x = 500
-*.rsu[2].mobility.y = 2500
-*.rsu[2].mobility.z = 3
-*.rsu[3].mobility.x = 1500
-*.rsu[3].mobility.y = 500
-*.rsu[3].mobility.z = 3
-*.rsu[4].mobility.x = 1500
-*.rsu[4].mobility.y = 1500
-*.rsu[4].mobility.z = 3
-*.rsu[5].mobility.x = 1500
-*.rsu[5].mobility.y = 2500
-*.rsu[5].mobility.z = 3
-*.rsu[6].mobility.x = 2500
-*.rsu[6].mobility.y = 500
-*.rsu[6].mobility.z = 3
-*.rsu[7].mobility.x = 2500
-*.rsu[7].mobility.y = 1500
-*.rsu[7].mobility.z = 3
-*.rsu[8].mobility.x = 2500
-*.rsu[8].mobility.y = 2500
-*.rsu[8].mobility.z = 3
 
 *.rsu[*].applType = "TraCIDemoRSU11p"
 *.rsu[*].appl.headerLength = 80 bit
@@ -91,7 +70,7 @@ sim-time-limit = 200s
 #                    NIC-Settings                        #
 ##########################################################
 *.connectionManager.sendDirect = true
-*.connectionManager.maxInterfDist = 1000m
+*.connectionManager.maxInterfDist = 2600m
 *.connectionManager.drawMaxIntfDist = true
 
 *.**.nic.mac1609_4.useServiceChannel = false

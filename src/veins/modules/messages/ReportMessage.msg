@@ -30,5 +30,5 @@ packet ReportMessage extends BaseFrame1609_4 {
     int senderType = 0;
     long cpu;
     long mem;
-    long wait;
+    simtime_t wait;
 }

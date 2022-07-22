@@ -72,12 +72,12 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
             RSUwaits.insert(std::make_pair(sender, rsuWait));
             
         }
-        std::cout << "Vehicle " << myId << " find RSU "<< sender << " at position " << pos << ", now have connectedRSUs " << connectedRSUs.size() << " RSUPositions " << RSUPositions.size() << std::endl;
-        std::map<LAddress::L2Type, Coord>::iterator itCoord=RSUPositions.begin();
-        for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
-            std::cout << "Vehicle " << myId << " now have RSU" << it->first << " at " << itCoord->second << std::endl;
-            itCoord++;
-        }
+        // std::cout << "Vehicle " << myId << " find RSU "<< sender << " at position " << pos << ", now have connectedRSUs " << connectedRSUs.size() << " RSUPositions " << RSUPositions.size() << std::endl;
+        // std::map<LAddress::L2Type, Coord>::iterator itCoord=RSUPositions.begin();
+        // for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
+        //     std::cout << "Vehicle " << myId << " now have RSU" << it->first << " at " << itCoord->second << std::endl;
+        //     itCoord++;
+        // }
 
     }
 }
@@ -85,7 +85,7 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
 void TraCIDemo11p::onTask(Task* frame)
 {
     Task* newTask = check_and_cast<Task*>(frame);
-    if (newTask->getSenderType() == 1) {
+    if (newTask->getSenderType() == 1 && newTask->getSenderAddress() == myId) {
         std::cout << "task finished" << std::endl;
         std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName();
         std::cout << "finished " << command << std::endl;
@@ -134,7 +134,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     std::map<LAddress::L2Type, simtime_t>::iterator itWait=RSUwaits.begin();
     for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
         if (simTime() - it->second >= 5) {
-            std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
+            // std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
             connectedRSUs.erase(it++);
             RSUPositions.erase(itCoord++);
             RSUcpus.erase(itCpu++);
@@ -179,7 +179,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
             double tmpDist = it->second.distance(curPosition);
             if(tmpDist <= minDist){
                 minDist = tmpDist;
-                std::cout << toString(it->second) << std::endl;
+                // std::cout << toString(it->second) << std::endl;
                 task->setTarget(toString(it->second).c_str());
             }
             itCpu++;
@@ -266,12 +266,11 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     }
 }
 
-int possion()  /* ����һ�����ɷֲ����������LamdaΪ����ƽ����*/
+int possion()
 {
     int Lambda = 20, k = 0;
     long double p = 1.0;
-    long double l=exp(-Lambda);  /* Ϊ�˾��ȣ��Ŷ���Ϊlong double�ģ�exp(-Lambda)�ǽӽ�0��С��*/
-    // printf("%.15Lfn",l);
+    long double l=exp(-Lambda);
     while (p>=l)
     {
         double u = U_Random();
@@ -281,11 +280,10 @@ int possion()  /* ����һ�����ɷֲ����������
     return k-1;
 }
 
-double U_Random()   /* ����һ��0~1֮�������� */
+double U_Random()
 {
     double f;
     f = (float)(rand() % 100);
-    /* printf("%fn",f); */
     return f/100;
 }
 

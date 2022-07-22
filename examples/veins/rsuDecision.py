@@ -178,7 +178,7 @@ if __name__ == "__main__":
     for node in optimalRelay:
         if node != optimalRSU and node != proxyPos:
             resultRelay += '(' + str(int(node[0])) + ',' + str(int(node[1])) + ',3);'
-    print(resultRSU, resultRelay)
+    # print(resultRSU, resultRelay)
     send(resultRSU, externalId + 'decision')
     send(resultRelay[:-1], externalId + 'relay')
     

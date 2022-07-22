@@ -27,6 +27,8 @@
 using namespace veins;
 
 Define_Module(veins::TraCIDemoRSU11p);
+double U_Random();
+int possion();
 int maxRate = 30;
 
 template<typename T> std::string toString(const T& t) {
@@ -40,8 +42,8 @@ void TraCIDemoRSU11p::initialize(int stage)
     DemoBaseApplLayer::initialize(stage);
     if (stage == 1) {
         ReportMessage* rm = new ReportMessage();
-        cpu = uniform(0.2, 10);
-        mem = uniform(300, 1200);
+        cpu = U_Random() * 8 + 2;
+        mem = U_Random() * 9000 + 3000;
         wait = 0;
         populateWSM(rm);
         rm->setSenderAddress(myId);
@@ -155,6 +157,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
             double taskMem = newTask->getMem();
             double cpuTmp = cpu;
             double operationTime = taskCpu / cpuTmp;
+            mem -= taskMem;
             // wait += operationTime;
             std::cout << "operate here " << curPosition << " , task name is " << taskName << " operation time " << operationTime << endl;
             newTask->setSenderType(1);
@@ -184,56 +187,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
             }
         }
     }
-    // std::cout << "receive Decision " << newTask->getDecision() << ' ' << decision << std::endl;
-    // ****parse cpu mem wait in new decision string
-    
-//     result = strtok( decision, delims );
-//     while( result != NULL ) {
-//         std::string tmp = result;
-//         size_t pos = tmp.find("|");
-//         std::string temp = tmp.substr(0, pos);
-//         std::cout<< "if myID " << myId << ' ' << temp << std::endl;
-//         if (myId == atol(temp.c_str())){
-//             std::string ifRun = tmp.substr(pos + 1, tmp.length() - 1);
-//             size_t pos2 = ifRun.find(":");
-//             std::string des = ifRun.substr(pos2 + 1, ifRun.length() - 1);
-//             if(des == "true"){
-//                 std::cout << "operate here, task name is " << taskName << endl;
-//                 double taskCpu = newTask->getCPU();
-//                 double taskMem = newTask->getMem();
-//                 double cpuTmp = cpu;
-//                 double operationTime = taskCpu / cpuTmp;
-//                 double distance = 0;
-//                 distance = sqrt(pow(newTask->getSenderPos().x - curPosition.x, 2) + pow(newTask->getSenderPos().y - curPosition.y, 2));
-//                 // one hop use bellow
-//                 double transmissionTime = newTask->getMem() * 8 / 1000 / (5 * log2(1 + 250 / distance));
-//                 newTask->setTransmissionTime(transmissionTime);
-//                 mem = mem - taskMem;
-//                 wait += operationTime + transmissionTime;
-                
-
-//                 std::cout << "task cpu " << taskCpu << " cpu capacity " << cpuTmp << " operation time " << operationTime << " wait " << wait << std::endl;
-//                 newTask->setSenderType(1);
-//                 newTask->setOperationTime(operationTime);
-//                 taskQueue.push_back(taskName);
-//                 scheduleAt(simTime() + wait, newTask->dup());
-
-//             }
-//             break;
-//         }
-
-// //        char* result2 = NULL;
-// //        result2 = strtok(result, delims2);
-// //        std::cout << "if myID " << myId << ' ' << result2 << std::endl;
-// //        if (myId == atol(result2)){
-// //            std::cout << "same with my ID" << std::endl;
-// //            break;
-// //        }
-//         result = strtok( NULL, delims );
-//     }
-    // std::cout << "receive Task " << newTask->getSenderPos() << std::endl;
 }
-
 
 void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
 {
@@ -275,6 +229,7 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
         tmpDes.erase(std::remove(tmpDes.begin(), tmpDes.end(), ' '), tmpDes.end());
         if(newTask->getSenderType() == 1){
             // send back
+            std::cout << "ready to send back" << std::endl;
             std::list<std::string>::iterator it;
             for(it = taskQueue.begin(); it != taskQueue.end(); ){
                 if (*it == newTask->getName()){
@@ -300,19 +255,21 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
             }
             if(flag){
                 std::cout << "task fininshed, but vehicle not arrive" << std::endl;
-                scheduleAt(simTime() + 1, newTask);
+                scheduleAt(simTime() + 1, newTask->dup());
             }
         }
         else if(tmpDes == toString(curPosition)){
             // just operate on this rsu
             std::string taskName = newTask->getName();
-            std::cout << "operate here, task name is " << taskName << endl;
+            std::cout << "operate here locally, task name is " << taskName << std::endl;
             double taskCpu = newTask->getCPU();
             double taskMem = newTask->getMem();
             double cpuTmp = cpu;
+            mem -= newTask->getMem();
             double operationTime = taskCpu / cpuTmp;
             // wait += operationTime;
             newTask->setSenderType(1);
+            newTask->setSenderPos(curPosition);
             newTask->setOperationTime(operationTime);
             taskQueue.push_back(taskName);
             std::cout << "operationTime " << operationTime << " taskWait " << taskWait << std::endl;
@@ -323,7 +280,7 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                 taskWait += operationTime;
             }
             // std::cout << "here " << simTime() << " present position " << taskWait << std::endl;
-            scheduleAt(taskWait, newTask->dup());
+            scheduleAt(taskWait, newTask);
         }
         else{
             sendDown(newTask->dup());

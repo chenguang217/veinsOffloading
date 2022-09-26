@@ -67,6 +67,7 @@ protected:
     long cpu;
     long wait;
     int ifSend = 0;
+    std::string lastroadID = "";
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

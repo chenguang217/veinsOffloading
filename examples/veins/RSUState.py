@@ -37,16 +37,19 @@ if __name__ == "__main__":
     taskList = sys.argv[2].replace(' ', '')
     cpu = sys.argv[3]
     mem = sys.argv[4]
-    wait = sys.argv[5]
-    simTime = sys.argv[6]
+    wait1 = sys.argv[5]
+    wait2 = sys.argv[6]
+    wait3 = sys.argv[7]
+    wait4 = sys.argv[8]
+    simTime = sys.argv[9]
     with open('RSUlog/' + position, 'a') as file:
         # print(bytes(taskList, 'utf-8'))
-        file.write(taskList.replace(' ', '') + ',' + mem + ',' + str(float(wait) - float(simTime)) + ',' + simTime + '\n')
-    with open('rsus.csv', 'r+') as file:
+        file.write(taskList.replace(' ', '') + ',' + mem + ',' + str(float(wait1) - float(simTime)) + str(float(wait2) - float(simTime)) + str(float(wait3) - float(simTime)) + str(float(wait4) - float(simTime)) + ',' + simTime + '\n')
+    with open('rsus.csv', 'r') as file:
         rsuList = file.readlines()
     for i in range(len(rsuList)):
         if rsuList[i].split(' ')[0] == position:
-            rsuList[i] = position + ' ' + cpu + ' ' + mem + ' ' + str(float(wait) - float(simTime)) + '\n'
+            rsuList[i] = position + ' ' + cpu + ' ' + mem + ' ' + str(float(wait1) - float(simTime)) + ' ' + str(float(wait2) - float(simTime)) + ' ' + str(float(wait3) - float(simTime)) + ' ' + str(float(wait4) - float(simTime)) + '\n'
     with open('rsus.csv', 'w+') as file:
         file.writelines(rsuList)
                 

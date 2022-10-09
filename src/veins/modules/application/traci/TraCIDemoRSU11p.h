@@ -44,10 +44,16 @@ public:
 protected:
     std::map<LAddress::L2Type, simtime_t> connectedNodes;
     std::map<LAddress::L2Type, Coord> NodePositions;
-    std::list<std::string>taskQueue;
-    simtime_t taskWait;
+    std::list<std::string>taskQueue1;
+    std::list<std::string>taskQueue2;
+    std::list<std::string>taskQueue3;
+    std::list<std::string>taskQueue4;
+    simtime_t taskWait1 = 0;
+    simtime_t taskWait2 = 0;
+    simtime_t taskWait3 = 0;
+    simtime_t taskWait4 = 0;
     double mem;
-    double cpu;
+    double cpu = 0;
     double wait;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

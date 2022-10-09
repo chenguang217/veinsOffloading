@@ -29,6 +29,8 @@ using namespace veins;
 Define_Module(veins::TraCIDemo11p);
 double U_Random();
 int possion();
+int maxTask = 1;
+double generateP = 0.0;
 
 template<typename T> std::string toString(const T& t) {
     std::ostringstream oss;
@@ -132,9 +134,10 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     std::map<LAddress::L2Type, long>::iterator itCpu=RSUcpus.begin();
     std::map<LAddress::L2Type, long>::iterator itMem=RSUmems.begin();
     std::map<LAddress::L2Type, simtime_t>::iterator itWait=RSUwaits.begin();
-    // std::string roadIdTmp = mobility->getRoadId();
-    // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe posRecord.py " + roadIdTmp;
-    // int result = system(command.c_str());
+    std::string roadIdTmp = mobility->getRoadId();
+    std::string externalId = mobility->getExternalId();
+    std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe posRecord.py " + externalId + " " + roadIdTmp + " " + toString(simTime());
+    int result = system(command.c_str());
     for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
         if (simTime() - it->second >= 5) {
             // std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
@@ -162,7 +165,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
         if (lastroadID.at(0) != ':'){
             std::cout << myId << " is at " << lastroadID << std::endl;
             // random generate tasks
-            if (U_Random() > 0.5 && ifSend <= 1){
+            if (U_Random() > generateP && ifSend < maxTask){
                 // generate Task Message
                 std::string externalId = mobility->getExternalId();
                 std::string roadId = mobility->getRoadId();
@@ -170,10 +173,10 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 Task* task = new Task();
                 populateWSM(task);
                 task->setSenderAddress(myId);
-                task->setCPU(U_Random() * 28 + 2);
                 // task->setCPU(20);
-                task->setMem(U_Random() * 900 + 300);
-                task->setStorage(U_Random() * 900 + 300);
+                task->setMem(U_Random() * 5120 + 5120);
+                task->setCPU(task->getMem() * 0.000008 * 1024);
+                task->setStorage(task->getMem());
                 task->setExternalId(externalId.c_str());
                 task->setRoadId(roadId.c_str());
                 task->setSenderType(0);

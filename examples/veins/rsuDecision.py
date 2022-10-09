@@ -12,6 +12,7 @@ from zmq import proxy
 
 size = (2600, 3000)
 maxRate = 30
+maxTime = 200
 
 def send(s, file_name):
     s=s+100*' '
@@ -99,13 +100,30 @@ if __name__ == "__main__":
 
     rsuList = {}
     for rsu in rsuInfo:
-        rsuList[rsu.split(':')[0]] = {
-            'cpu': float(rsu.split(':')[1].split('*')[0]), 
-            'mem': float(rsu.split(':')[1].split('*')[1]), 
-            'wait': float(rsu.split(':')[1].split('*')[2]), 
-        }
-        # if rsu.split(':')[0] == '(2500,1500,3)':
-        #     rsuList[rsu.split(':')[0]]['cpu'] = 2
+        if float(rsu.split(':')[1].split('*')[2]) < maxTime:
+            rsuList[rsu.split(':')[0] + ';1'] = {
+                'cpu': float(rsu.split(':')[1].split('*')[0]), 
+                'mem': float(rsu.split(':')[1].split('*')[1]), 
+                'wait': float(rsu.split(':')[1].split('*')[2]), 
+            }
+        if float(rsu.split(':')[1].split('*')[3]) < maxTime:
+            rsuList[rsu.split(':')[0] + ';2'] = {
+                'cpu': float(rsu.split(':')[1].split('*')[0]), 
+                'mem': float(rsu.split(':')[1].split('*')[1]), 
+                'wait': float(rsu.split(':')[1].split('*')[3]), 
+            }
+        if float(rsu.split(':')[1].split('*')[4]) < maxTime:
+            rsuList[rsu.split(':')[0] + ';3'] = {
+                'cpu': float(rsu.split(':')[1].split('*')[0]), 
+                'mem': float(rsu.split(':')[1].split('*')[1]), 
+                'wait': float(rsu.split(':')[1].split('*')[4]), 
+            }
+        if float(rsu.split(':')[1].split('*')[5]) < maxTime:
+            rsuList[rsu.split(':')[0] + ';4'] = {
+                'cpu': float(rsu.split(':')[1].split('*')[0]), 
+                'mem': float(rsu.split(':')[1].split('*')[1]), 
+                'wait': float(rsu.split(':')[1].split('*')[5]), 
+            }
 
     # -----------eta calculation-----------
 
@@ -150,12 +168,11 @@ if __name__ == "__main__":
             rsuWaits[line[0]] = (float(line[3]))
     variance = calVariance(list(rsuWaits.values()))
     optimal = -1000
-    optimalRSU = []
-    optimalRelay = []
     for rsu, property in rsuList.items():
         operationTime = cpu / property['cpu'] + property['wait']
         rsuPos = rsu.replace('(', '').replace(')', '')
         rsuPos = [float(rsuPos.split(',')[0]), float(rsuPos.split(',')[1])]
+        core = int(rsu.split(';')[1])
         relays = relay(proxyPos, rsuPos)
         relayTime = 0
         for i in range(len(relays) - 1):
@@ -172,8 +189,9 @@ if __name__ == "__main__":
             optimal = 0.5 * varianceGain + 0.5 * serviceRate
             optimalRSU = rsuPos
             optimalRelay = relays
+            optimalCore = core
     # print(optimalRSU, optimalRelay)
-    resultRSU = '(' + str(int(optimalRSU[0])) + ',' + str(int(optimalRSU[1])) + ',3)'
+    resultRSU = '(' + str(int(optimalRSU[0])) + ',' + str(int(optimalRSU[1])) + ',3);' + str(optimalCore)
     resultRelay = ''
     for node in optimalRelay:
         if node != optimalRSU and node != proxyPos:
@@ -181,6 +199,7 @@ if __name__ == "__main__":
     # print(resultRSU, resultRelay)
     send(resultRSU, externalId + 'decision')
     send(resultRelay[:-1], externalId + 'relay')
+    print(resultRelay, resultRSU)
     
 
     

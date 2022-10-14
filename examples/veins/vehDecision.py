@@ -10,8 +10,8 @@ import sumolib
 
 size = (2600, 3000)
 
-theoryCPUMax = 10
-theoryCPUMin = 0.2
+theoryCPUMax = 2
+theoryCPUMin = 1
 
 #写入一次
 def send(s, file_name):

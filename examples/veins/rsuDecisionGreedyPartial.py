@@ -175,9 +175,7 @@ if __name__ == "__main__":
             etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
             etaRoad.append([etaRaw[i][0], float(etaRaw[i][1]) - etaStart])
 
-
-    # ----------------decision process----------------
-    # -----------here is a greedy algorithm-----------
+    # ---------------get rsu task list----------------
 
     decision = ''
     result = []
@@ -192,8 +190,11 @@ if __name__ == "__main__":
                 break
             line = line.strip().split(' ')
             rsuWaits[line[0]] = (float(line[3]))
-    variance = calVariance(list(rsuWaits.values()))
-    optimal = -1000
+
+    # ----------------decision process----------------
+    # -----------here is a greedy algorithm-----------
+
+    # -----sort all possible rsus, calculate gain-----
     for rsu, property in rsuList.items():
         operationTime = cpu / property['cpu'] + property['wait']
         rsuPos = rsu.replace('(', '').replace(')', '')
@@ -212,7 +213,7 @@ if __name__ == "__main__":
             target = etaFinal[-1][0]
             serviceRoad = etaRoad[-1][0]
         # print(operationTime + transTime + relayTime,serviceRoad)
-        varianceGain = calFairnessGain(rsu, rsuWaits, operationTime, variance)
+        varianceGain = calFairnessGain(rsu, rsuWaits, operationTime, 0)
         # serviceRate = calServiceRate(target, rsuPos)
         serviceRate = calIntegralServiceRate(getRoadLength(serviceRoad, net, boundaries), rsuPos)
         if 0.5 * varianceGain + 0.5 * serviceRate > optimal:
@@ -221,23 +222,3 @@ if __name__ == "__main__":
             optimalRelay = relays
             optimalCore = core
             optimalServiceRoad = serviceRoad
-    # print(optimalRSU, optimalRelay)
-    resultRSU = '(' + str(int(optimalRSU[0])) + ',' + str(int(optimalRSU[1])) + ',3);' + str(optimalCore) + '*1|'
-    resultRelay = ''
-    for node in optimalRelay:
-        if node != optimalRSU and node != proxyPos:
-            resultRelay += '(' + str(int(node[0])) + ',' + str(int(node[1])) + ',3);'
-    if len(resultRelay) == 0:
-        resultRelay += 'NULL'
-    else:
-        resultRelay = resultRelay[:-1]
-    print(resultRSU, resultRelay)
-    send(resultRSU, externalId + 'decision')
-    send(resultRelay, externalId + 'relay')
-    send(optimalServiceRoad, externalId + 'service')
-    
-
-    
-        
-        
-        

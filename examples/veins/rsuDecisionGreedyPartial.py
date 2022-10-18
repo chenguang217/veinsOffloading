@@ -1,3 +1,5 @@
+import collections
+import copy
 import json
 import math
 import mmap
@@ -8,7 +10,6 @@ from turtle import pos
 
 import numpy as np
 import sumolib
-
 
 size = (2600, 3000)
 maxRate = 60
@@ -189,12 +190,18 @@ if __name__ == "__main__":
             if len(line) == 0:
                 break
             line = line.strip().split(' ')
+            for i in range(3, len(line)):
+                rsuWaits[line[0] + ';' + str(i - 2)] = (float(line[i]))
             rsuWaits[line[0]] = (float(line[3]))
-
+    
     # ----------------decision process----------------
-    # -----------here is a greedy algorithm-----------
+    # -------here is a partial greedy algorithm-------
 
     # -----sort all possible rsus, calculate gain-----
+    optimal = -1000
+    gainList = {}
+    variance = calVariance(list(rsuWaits.values()))
+    serviceRoadList = {}
     for rsu, property in rsuList.items():
         operationTime = cpu / property['cpu'] + property['wait']
         rsuPos = rsu.replace('(', '').replace(')', '')
@@ -208,17 +215,55 @@ if __name__ == "__main__":
             if etaFinal[eta][1] > operationTime + transTime + relayTime:
                 target = etaFinal[eta - 1][0]
                 serviceRoad = etaRoad[eta - 1][0]
+                serviceRoadList[rsu] = serviceRoad
                 break
         else:
             target = etaFinal[-1][0]
             serviceRoad = etaRoad[-1][0]
-        # print(operationTime + transTime + relayTime,serviceRoad)
-        varianceGain = calFairnessGain(rsu, rsuWaits, operationTime, 0)
-        # serviceRate = calServiceRate(target, rsuPos)
-        serviceRate = calIntegralServiceRate(getRoadLength(serviceRoad, net, boundaries), rsuPos)
-        if 0.5 * varianceGain + 0.5 * serviceRate > optimal:
-            optimal = 0.5 * varianceGain + 0.5 * serviceRate
-            optimalRSU = rsuPos
-            optimalRelay = relays
-            optimalCore = core
-            optimalServiceRoad = serviceRoad
+            serviceRoadList[rsu] = serviceRoad
+        serviceGain = calIntegralServiceRate(getRoadLength(serviceRoad, net, boundaries), rsuPos) / mem
+        tmpWait = list(rsuWaits.values())
+        # print(tmpWait[tmpWait.index(max(tmpWait))])
+        tmpWaitMax = copy.deepcopy(tmpWait)
+        tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / property['cpu'] / mem
+        tmpWait[list(rsuWaits.keys()).index(rsu)] += cpu / property['cpu'] / mem
+        fairnessGain = 1 - calVariance(tmpWait) / calVariance(tmpWaitMax)
+        gainList[rsu] = 0.5 * serviceGain + 0.5 * fairnessGain
+        # print(gainList[rsu])
+    sortedGainList = collections.OrderedDict(sorted(gainList.items(),key=lambda t:t[1], reverse=True))
+    remainMem = mem
+    decision = ''
+    resultRelay = ''
+    serviceRoad = ''
+    for rsu, gain in sortedGainList.items():
+        # print(rsu, gain)
+        # print(min(rsuList[rsu]['mem'], remainMem))
+        tmpResultRelay = ''
+        decision += rsu + '*'
+        ratio = min(rsuList[rsu]['mem'], remainMem) / mem
+        decision += str(ratio)
+        rsuPos = rsu.replace('(', '').replace(')', '')
+        rsuPos = [float(rsuPos.split(',')[0]), float(rsuPos.split(',')[1])]
+        tmpRelay = relay(proxyPos, rsuPos)
+        for node in tmpRelay:
+            if node != rsuPos and node != proxyPos:
+                tmpResultRelay += '(' + str(int(node[0])) + ',' + str(int(node[1])) + ',3);'
+        if len(tmpResultRelay) == 0:
+            tmpResultRelay += 'NULL'
+        serviceRoad += serviceRoadList[rsu]
+        decision += '|'
+        resultRelay += tmpResultRelay + '|'
+        serviceRoad += '|'
+        remainMem -= min(rsuList[rsu]['mem'], remainMem)
+        if remainMem == 0:
+            break
+    print(decision)
+    print(resultRelay)
+    print(serviceRoad)
+    send(decision, externalId + 'decision')
+    send(resultRelay, externalId + 'relay')
+    send(serviceRoad, externalId + 'service')
+
+
+
+

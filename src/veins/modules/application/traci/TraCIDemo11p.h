@@ -63,10 +63,13 @@ protected:
     std::map<LAddress::L2Type, long>RSUcpus;
     std::map<LAddress::L2Type, long>RSUmems;
     std::map<LAddress::L2Type, simtime_t>RSUwaits;
+    std::map<std::string, double>taskList;
     long mem;
     long cpu;
     long wait;
     int ifSend = 0;
+    int startflag = 1;
+    int startgenerate = 0;
     std::string lastroadID = "";
 
 protected:

@@ -31,4 +31,5 @@ packet ReportMessage extends BaseFrame1609_4 {
     long cpu;
     long mem;
     simtime_t wait;
+    string vehRoad;
 }

@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
     # -----------generate deadline-----------
 
-    deadLinePosition = random.choice(roads[roads.index(road):]) # 把deadline加入到新的共享内存中
+    deadLinePosition = random.choice(roads[roads.index(road) + 3:]) # 把deadline加入到新的共享内存中 ** deadline最少与当前道路隔三条路，确保世界可以执行完成
     # deadLinePosition = '4006702#0'
     deadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
     boundaries = net.getBoundary()
@@ -173,13 +173,17 @@ if __name__ == "__main__":
         possibleFarest = etaFinal[-1][0]
     # print(possibleNearest, possibleFarest)
     tmpRoads = [[net.getEdge(road).getFromNode().getCoord()[0] - boundaries[0], boundaries[3] - net.getEdge(road).getFromNode().getCoord()[1]] for road in roads]
+    # print(roads)
 
     # -----------get possible RSU-----------
 
     with open('node2RSUtest.json', 'r') as file:
         node2RSU = json.loads(file.read().strip())
     usableRSUs = []
-    for tmpPosition in tmpRoads[tmpRoads.index(possibleNearest):tmpRoads.index(possibleFarest) + 1]:
+    # print(tmpRoads)
+    # print(deadPosition)
+    for tmpPosition in tmpRoads[tmpRoads.index(possibleNearest):tmpRoads.index(deadPosition) + 1]:
+        # print(tmpPosition)
         for tmpNode in node2RSU[str(tmpPosition)]:
             if tmpNode not in usableRSUs:
                 usableRSUs.append(tmpNode)

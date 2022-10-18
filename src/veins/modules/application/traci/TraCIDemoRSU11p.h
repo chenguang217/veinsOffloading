@@ -29,7 +29,10 @@
 #include <sstream>
 #include <cstdlib>
 #include <string>
+#include <cstring>
 #include <math.h>
+#include <fstream>
+#include <vector>
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
 
@@ -44,6 +47,7 @@ public:
 protected:
     std::map<LAddress::L2Type, simtime_t> connectedNodes;
     std::map<LAddress::L2Type, Coord> NodePositions;
+    std::map<LAddress::L2Type, std::string> NodeRoad;
     std::list<std::string>taskQueue1;
     std::list<std::string>taskQueue2;
     std::list<std::string>taskQueue3;

@@ -37,6 +37,36 @@ template<typename T> std::string toString(const T& t) {
     return oss.str();
 }
 
+std::string trim(std::string s){
+    int index = 0;
+    if( !s.empty()){
+        while( (index = s.find(' ',index)) != std::string::npos){
+            s.erase(index,1);
+        }
+    }
+    return s;
+}
+
+std::vector<std::string> split(const std::string& str, const std::string& delim) {
+	std::vector<std::string> res;
+	if("" == str) return res;
+	//先将要切割的字符串从string类型转换为char*类型
+	char * strs = new char[str.length() + 1] ; //不要忘了
+	strcpy(strs, str.c_str()); 
+ 
+	char * d = new char[delim.length() + 1];
+	strcpy(d, delim.c_str());
+ 
+	char *p = strtok(strs, d);
+	while(p) {
+		std::string s = p; //分割得到的字符串转换为string类型
+		res.push_back(s); //存入结果数组
+		p = strtok(NULL, d);
+	}
+ 
+	return res;
+}
+
 void TraCIDemoRSU11p::initialize(int stage)
 {
     DemoBaseApplLayer::initialize(stage);
@@ -65,15 +95,20 @@ void TraCIDemoRSU11p::onRM(ReportMessage* frame)
         ReportMessage* rm = check_and_cast<ReportMessage*>(frame);
         LAddress::L2Type sender = rm->getSenderAddress();
         Coord pos = rm->getSenderPos();
+        std::string roadId = rm->getVehRoad();
         simtime_t time = simTime();
         std::map<LAddress::L2Type, simtime_t>::iterator it;
+        std::map<LAddress::L2Type, std::string>::iterator itRoad;
         it = connectedNodes.find(sender);
         if(it == connectedNodes.end()) {
             connectedNodes.insert(std::make_pair(sender, time));
             NodePositions.insert(std::make_pair(sender, pos));
+            NodeRoad.insert(std::make_pair(sender, roadId));
         }
         else {
             it->second = time;
+            itRoad = NodeRoad.find(sender);
+            itRoad->second = roadId;
         }
         findHost()->getDisplayString().setTagArg("t", 0, connectedNodes.size());
     }
@@ -92,10 +127,10 @@ void TraCIDemoRSU11p::onTask(Task* frame)
     strcpy(possibleRSUs, newTask->getPossibleRSUs());
     char delims[] = ";";
     char *result = NULL;
-    std::string rsuInfo = "";
     result = strtok( possibleRSUs, delims );
     if (toString(newTask->getTarget()) == toString(curPosition)){
         // proxyMode
+        std::string rsuInfo = "";
         std::string externalId = newTask->getExternalId();
         while(result != NULL){
             std::ifstream infile("rsus.csv");
@@ -139,12 +174,23 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         }
         relay = MapViewOfFile(hMapRelay, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecision.py " + rsuInfo + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition);
+        LPVOID serviceRoad;
+        HANDLE hMapServiceRoad = NULL;
+        hMapServiceRoad = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "service").c_str());
+        if (hMapServiceRoad == NULL) {
+            hMapServiceRoad = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "service").c_str());
+        }
+        serviceRoad = MapViewOfFile(hMapServiceRoad, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecisionGreedyPartial.py " + rsuInfo + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition);
         std::cout << "rsuInfo " << command << std::endl;
         int result = system(command.c_str());
-        newTask->setTarget("");
-        newTask->setDecision((char*)decision);
-        newTask->setRelay((char*)relay);
+        std::string tmpMainDecision((char*)decision);
+        std::string tmpMainRelay((char*)relay);
+        std::string tmpMainRoad((char*)serviceRoad);
+        std::vector<std::string> tmpMainDecisionVector = split(trim(tmpMainDecision), "|");
+        std::vector<std::string> tmpMainRelayVector = split(trim(tmpMainRelay), "|");
+        std::vector<std::string> tmpMainRoadVector = split(trim(tmpMainRoad), "|");
         double distance = sqrt(pow(newTask->getSenderPos().x - curPosition.x, 2) + pow(newTask->getSenderPos().y - curPosition.y, 2));
         double transmissionTime = 0;
         if (5 * log2(1 + 2500 / distance) > maxRate){
@@ -152,9 +198,25 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         } else {
             transmissionTime = newTask->getMem() * 8 / 1024 / (5 * log2(1 + 2500 / distance));
         }
-        std::cout << "transmissionTime " << transmissionTime << " decision " << (char*)decision << std::endl;
-        newTask->setTransmissionTime(transmissionTime);
-        scheduleAt(simTime() + transmissionTime, newTask->dup());
+        for (int i = 0; i < tmpMainDecisionVector.size(); ++i)
+        {
+            std::cout << tmpMainDecisionVector[i] << " " << tmpMainRelayVector[i] << " " << tmpMainRoadVector[i] << std::endl;
+            Task* taskSplit = newTask->dup();
+            taskSplit->setTarget("");
+            std::vector<std::string> ratioResult = split(tmpMainDecisionVector[i], "*");
+            taskSplit->setDecision(ratioResult[0].c_str());
+            taskSplit->setRatio(strtod(toString(ratioResult[1]).c_str(),NULL));
+            if(tmpMainRelayVector[i] == "NULL"){
+                taskSplit->setRelay("");
+            }
+            else{
+                taskSplit->setRelay(tmpMainRelayVector[i].c_str());
+            }
+            taskSplit->setService(tmpMainRoadVector[i].c_str());
+            taskSplit->setTransmissionTime(transmissionTime);
+            std::cout << "task part, transmissionTime " << transmissionTime << " decision " << tmpMainDecisionVector[i] << " ratio " << taskSplit->getRatio() << std::endl;
+            scheduleAt(simTime() + transmissionTime, taskSplit->dup());
+        }
     }
     else if (toString(newTask->getTarget()) == "" && newTask->getSenderType() == 0){
         // receive proxied task
@@ -170,8 +232,8 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         // std::cout << "here4 " << tmpDecision << " relays " << tmpResult << std::endl;
         if(toString(tmpDecision) == toString(curPosition)){
             // operate here
-            double taskCpu = newTask->getCPU();
-            double taskMem = newTask->getMem();
+            double taskCpu = newTask->getCPU() * newTask->getRatio();
+            double taskMem = newTask->getMem() * newTask->getRatio();
             double cpuTmp = cpu;
             double operationTime = taskCpu / cpuTmp;
             mem -= taskMem;
@@ -179,6 +241,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
             std::cout << "operate here " << curPosition << " , task name is " << taskName << " operation time " << operationTime << endl;
             newTask->setSenderType(1);
             newTask->setOperationTime(operationTime);
+            // newTask->setRatio(1);
             switch(atoi(toString(tmpResult).c_str())){
                 case 1 :
                     std::cout << "operate on core 1" << std::endl;
@@ -275,10 +338,12 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
 
         std::map<LAddress::L2Type, simtime_t>::iterator it;
         std::map<LAddress::L2Type, Coord>::iterator itCoord=NodePositions.begin();
+        std::map<LAddress::L2Type, std::string>::iterator itRoad=NodeRoad.begin();
         for(it = connectedNodes.begin(); it != connectedNodes.end(); it++) {
             if (simTime() - it->second >= 3.5) {
                 connectedNodes.erase(it++);
                 NodePositions.erase(itCoord++);
+                NodeRoad.erase(itRoad++);
                 if (it == connectedNodes.end()) {
                     break;
                 }
@@ -354,31 +419,67 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                     }
                     break;
             }
-            bool flag = true;
             std::map<LAddress::L2Type, Coord>::iterator it2;
+            std::map<LAddress::L2Type, std::string>::iterator itRoad = NodeRoad.begin();
+            // need a new strategy
             for(it2 = NodePositions.begin(); it2 != NodePositions.end(); it2++) {
                 std::cout << "scan veh " << it2->first << std::endl;
                 if(it2->first == newTask->getSenderAddress()){
-                    flag = false;
-                    newTask->setSenderPos(curPosition);
-                    double operationTime = newTask->getOperationTime();
-                    double transmissionTime = newTask->getTransmissionTime();
-                    double taskMem = newTask->getMem();
-                    mem += taskMem;
-                    std::cout << "number of task is " << taskQueue1.size() << " wait time is " << taskWait1 << std::endl;
-                    sendDown(newTask->dup());
+                    LPVOID backDecision;
+                    HANDLE hMapBackDecision = NULL;
+                    hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
+                    if (hMapBackDecision == NULL) {
+                        hMapBackDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (trim(toString(newTask->getName())) + "sendback").c_str());
+                    }
+                    backDecision = MapViewOfFile(hMapBackDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                    //already scan vehicle, needs findout the service location
+                    std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuSendback.py " + itRoad->second + " " + newTask->getExternalId() + " " + trim(toString(newTask->getName())) + " " + toString(newTask->getDeadlinePos()) + " " + trim(toString(newTask->getService()));
+                    std::cout << "send back command " << command << std::endl;
+                    int result = system(command.c_str());
+                    std::string tmpSendback((char*)backDecision);
+                    if(atoi(tmpSendback.c_str()) == 1){
+                        newTask->setSenderPos(curPosition);
+                        double operationTime = newTask->getOperationTime();
+                        double transmissionTime = newTask->getTransmissionTime();
+                        double taskMem = newTask->getMem();
+                        mem += taskMem;
+                        std::cout << "number of task is " << taskQueue1.size() << " wait time is " << taskWait1 << std::endl;
+                        sendDown(newTask->dup());
+                        break;
+                    }
+                    else if(atoi(tmpSendback.c_str()) == 0){
+                        std::cout << "task fininshed, but vehicle not arrive" << std::endl;
+                        scheduleAt(simTime() + 1, newTask->dup());
+                        break;
+                    }
+                    else if(atoi(tmpSendback.c_str()) == 3){
+                        std::cout << "task didn't finish on time, vehicle have pass through deadline" << std::endl;
+                        std::ofstream outfile;
+                        outfile.open("taskLog/" + trim(toString(newTask->getName())) + ".json");
+                        outfile << "failed" << std::endl;
+                        break;
+                    }
+                    else{
+                        std::cout << "task finish later than service road, need record task sendback length" << std::endl;
+                        newTask->setSenderPos(curPosition);
+                        double operationTime = newTask->getOperationTime();
+                        double transmissionTime = newTask->getTransmissionTime();
+                        double taskMem = newTask->getMem();
+                        //set length and set sender type
+                        newTask->setService((char*)backDecision);
+                        newTask->setSenderType(2);
+                        mem += taskMem;
+                        sendDown(newTask->dup());
+                    }
                 }
-            }
-            if(flag){
-                std::cout << "task fininshed, but vehicle not arrive" << std::endl;
-                scheduleAt(simTime() + 1, newTask->dup());
+                itRoad++;
             }
         }
         else if(toString(tmpDesLocal) == toString(curPosition)){
             // just operate on this rsu
             std::string taskName = newTask->getName();
-            double taskCpu = newTask->getCPU();
-            double taskMem = newTask->getMem();
+            double taskCpu = newTask->getCPU() * newTask->getRatio();
+            double taskMem = newTask->getMem() * newTask->getRatio();
             double cpuTmp = cpu;
             mem -= newTask->getMem();
             double operationTime = taskCpu / cpuTmp;

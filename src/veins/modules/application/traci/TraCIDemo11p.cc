@@ -32,10 +32,21 @@ int possion();
 int maxTask = 1;
 double generateP = 0.0;
 
+
 template<typename T> std::string toString(const T& t) {
     std::ostringstream oss;
     oss<<t;
     return oss.str();
+}
+
+std::string trim1(std::string s){
+    int index = 0;
+    if( !s.empty()){
+        while( (index = s.find(' ',index)) != std::string::npos){
+            s.erase(index,1);
+        }
+    }
+    return s;
 }
 
 void TraCIDemo11p::initialize(int stage)
@@ -62,6 +73,8 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
         populateWSM(newRM);
         newRM->setSenderAddress(myId);
         newRM->setSenderType(1);
+        std::string roadIdTmp = mobility->getRoadId();
+        newRM->setVehRoad(roadIdTmp.c_str());
         scheduleAt(simTime() + uniform(0.01, 0.2), newRM->dup());
         delete newRM;
         std::map<LAddress::L2Type, simtime_t>::iterator it;
@@ -88,10 +101,48 @@ void TraCIDemo11p::onTask(Task* frame)
 {
     Task* newTask = check_and_cast<Task*>(frame);
     if (newTask->getSenderType() == 1 && newTask->getSenderAddress() == myId) {
+        taskList[trim1(toString(newTask->getName()))] = taskList[trim1(toString(newTask->getName()))] + newTask->getRatio();
         std::cout << "task finished" << std::endl;
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName();
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + trim1(toString(newTask->getName())) + " 0 " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
         std::cout << "finished " << command << std::endl;
         int result = system(command.c_str());
+        std::map<std::string, double>::const_iterator iteMap = taskList.begin();
+        for(; iteMap != taskList.end(); ++ iteMap)
+        {
+            std::cout << iteMap->first;
+            std::cout << ":";
+            std::cout << iteMap->second << endl;
+            if(iteMap->second == 1){
+                std::cout << "this finished" << endl;
+                taskList.erase(iteMap++);
+                std::ofstream outfile;
+                outfile.open("taskLog/" + trim1(toString(newTask->getName())) + ".json");
+                outfile << "success" << std::endl;
+                break;
+            }
+        }
+    }
+    else if (newTask->getSenderType() == 2 && newTask->getSenderAddress() == myId) {
+        taskList[trim1(toString(newTask->getName()))] = taskList[trim1(toString(newTask->getName()))] + newTask->getRatio();
+        std::cout << "task finished" << std::endl;
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName() + " " + toString(newTask->getService()) + " " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
+        std::cout << "finished " << command << std::endl;
+        int result = system(command.c_str());
+        std::map<std::string, double>::const_iterator iteMap = taskList.begin();
+        for(; iteMap != taskList.end(); ++ iteMap)
+        {
+            std::cout << iteMap->first;
+            std::cout << ":";
+            std::cout << iteMap->second << endl;
+            if(iteMap->second == 1){
+                std::cout << "this finished" << endl;
+                taskList.erase(iteMap++);
+                std::ofstream outfile;
+                outfile.open("taskLog/" + trim1(toString(newTask->getName())) + ".json");
+                outfile << "success" << std::endl;
+                break;
+            }
+        }
     }
 }
 
@@ -139,7 +190,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe posRecord.py " + externalId + " " + roadIdTmp + " " + toString(simTime());
     int result = system(command.c_str());
     for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
-        if (simTime() - it->second >= 5) {
+        if (simTime() - it->second >= 6) {
             // std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
             connectedRSUs.erase(it++);
             RSUPositions.erase(itCoord++);
@@ -160,12 +211,23 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
         lastroadID = mobility->getRoadId();
         std::cout << myId << " is at " << lastroadID << std::endl;
     }
-    if (mobility->getRoadId() != lastroadID){
+    if (startflag == 1 && startgenerate == 0){
+    // if (startflag == 1){
+        double gratio = U_Random();
+        std::cout << "the gratio is" << gratio << std::endl;
+        if (gratio > generateP){
+            startgenerate = 1;
+        }
+        else{
+            startflag = 0;
+        }
+    }
+    if (mobility->getRoadId() != lastroadID || startflag == 1){
         lastroadID = mobility->getRoadId();
         if (lastroadID.at(0) != ':'){
             std::cout << myId << " is at " << lastroadID << std::endl;
             // random generate tasks
-            if (U_Random() > generateP && ifSend < maxTask){
+            if ((U_Random() > generateP || startflag == 1) && ifSend < maxTask){
                 // generate Task Message
                 std::string externalId = mobility->getExternalId();
                 std::string roadId = mobility->getRoadId();
@@ -192,9 +254,10 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 for(it = RSUPositions.begin(); it != RSUPositions.end(); it++) {
                     RSUinfo = RSUinfo + toString(itCpu->first) + ":" + toString(it->second) + "*" + toString(itCpu->second) + "*" + toString(itMem->second) + "*" + toString(itWait->second) + ";";
                     double tmpDist = it->second.distance(curPosition);
+                    // std::cout << it->second << std::endl;
                     if(tmpDist <= minDist){
                         minDist = tmpDist;
-                        // std::cout << toString(it->second) << std::endl;
+                        // std::cout << minDist << std::endl;
                         task->setTarget(toString(it->second).c_str());
                     }
                     itCpu++;
@@ -236,10 +299,14 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehDecision.py 123 " + externalId + " " + roadId + " " + RSUinfo + " " + toString(curPosition) + " " + toString(task->getCPU());
                 std::cout << "command " << command << std::endl;
                 int result = system(command.c_str());
-                if ((char*)pBufferDeadlineX != NULL){
+                if ((char*)pBufferDeadlineX != NULL && result == 0){
                     task->setDeadlinePos(Coord(strtod((char*)pBufferDeadlineX, NULL), strtod((char*)pBufferDeadlineY, NULL), 0));
                     ifSend++;
                 }
+                if (result == 0 && startflag == 1){
+                    startflag = 0;
+                }
+                // std::cout << ifSend << std::endl;
                 task->setName((char*)pBuffer);
                 task->setPossibleRSUs((char*)pBufferDecision);
                 scheduleAt(simTime() + uniform(0.01, 0.2), task->dup());

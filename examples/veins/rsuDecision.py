@@ -231,10 +231,14 @@ if __name__ == "__main__":
         resultRelay += 'NULL'
     else:
         resultRelay = resultRelay[:-1]
-    print(resultRSU, resultRelay)
+    # print(resultRSU, resultRelay)
     send(resultRSU, externalId + 'decision')
     send(resultRelay, externalId + 'relay')
     send(optimalServiceRoad, externalId + 'service')
+    print(resultRSU)
+    print(resultRelay)
+    print(optimalServiceRoad)
+
     
 
     

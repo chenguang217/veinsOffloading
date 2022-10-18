@@ -41,5 +41,7 @@ packet Task extends BaseFrame1609_4 {
     string decision;
     string possibleRSUs;
     string relay;
+    string service;
     Coord deadlinePos;
+    double ratio;
 }

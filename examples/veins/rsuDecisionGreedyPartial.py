@@ -192,13 +192,11 @@ if __name__ == "__main__":
             line = line.strip().split(' ')
             for i in range(3, len(line)):
                 rsuWaits[line[0] + ';' + str(i - 2)] = (float(line[i]))
-            rsuWaits[line[0]] = (float(line[3]))
     
     # ----------------decision process----------------
     # -------here is a partial greedy algorithm-------
 
     # -----sort all possible rsus, calculate gain-----
-    optimal = -1000
     gainList = {}
     variance = calVariance(list(rsuWaits.values()))
     serviceRoadList = {}
@@ -225,7 +223,7 @@ if __name__ == "__main__":
         tmpWait = list(rsuWaits.values())
         # print(tmpWait[tmpWait.index(max(tmpWait))])
         tmpWaitMax = copy.deepcopy(tmpWait)
-        tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / property['cpu'] / mem
+        tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu'] / mem
         tmpWait[list(rsuWaits.keys()).index(rsu)] += cpu / property['cpu'] / mem
         fairnessGain = 1 - calVariance(tmpWait) / calVariance(tmpWaitMax)
         gainList[rsu] = 0.5 * serviceGain + 0.5 * fairnessGain

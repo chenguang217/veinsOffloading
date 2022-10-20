@@ -1,3 +1,5 @@
+import collections
+import copy
 import json
 import math
 import mmap
@@ -8,7 +10,6 @@ from turtle import pos
 
 import numpy as np
 import sumolib
-
 
 size = (2600, 3000)
 maxRate = 60
@@ -102,6 +103,67 @@ def calIntegralServiceRate(shapeNodes, rsuPos):
     servicePoint = [xSum / len(shapeNodes), ySum / len(shapeNodes)]
     return calServiceRate(servicePoint, rsuPos)
 
+def CalMetric(serviceRate, waits, waitMax):
+    if calVariance(waitMax) == 0:
+        # means no ratio task allocate
+        return 0.5 * serviceRate
+    else:
+        return 0.5 * serviceRate + 0.5 * (1 - calVariance(waits) / calVariance(waitMax))
+        # return 0.5 * serviceRate
+
+def calProfit(ratio, rsuIndex, allocateRatio, currentState, cpu, mem, rsuList, boundaries, serviceRoadList, originWait, transTime, proxyPos, etaRoad, etaFinal):
+    # print(ratio, rsuIndex, currentState, mem, rsuList)
+    tmpState = copy.deepcopy(currentState[2])
+    try:
+        tmpState[list(rsuList.keys())[rsuIndex]][0] += ratio
+    except:
+        tmpState[list(rsuList.keys())[rsuIndex]] = [ratio, '']
+    
+    cpuTmp = rsuList[list(rsuList.keys())[rsuIndex]]['cpu']
+    rsuPos = list(rsuList.keys())[rsuIndex].replace('(', '').replace(')', '')
+    rsuPos = [int(rsuPos.split(',')[0]), int(rsuPos.split(',')[1])]
+    operationTime = cpu / cpuTmp * tmpState[list(rsuList.keys())[rsuIndex]][0] + rsuList[list(rsuList.keys())[rsuIndex]]['wait']
+    relays = relay(proxyPos, rsuPos)
+    relayTime = 0
+    for i in range(len(relays) - 1):
+        relayTime += mem * 8 / 1000 / maxRate
+    for eta in range(len(etaFinal)):
+        if etaFinal[eta][1] > operationTime + transTime + relayTime:
+            serviceRoad = etaRoad[eta - 1][0]
+            break
+    else:
+        serviceRoad = etaRoad[-1][0]
+    tmpState[list(rsuList.keys())[rsuIndex]][1] = serviceRoad
+
+    serviceRate = 0
+    for rsu, property in tmpState.items():
+        tmpPos = rsu.replace('(', '').replace(')', '')
+        tmpPos = [int(tmpPos.split(',')[0]), int(tmpPos.split(',')[1])]
+        serviceRate += calIntegralServiceRate(getRoadLength(property[1], net, boundaries), tmpPos) * property[0]
+    tmpWaitMax = copy.deepcopy(list(originWait.values()))
+    tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu']
+    # tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu'] * (ratio + allocateRatio)
+    tmpWait = copy.deepcopy(currentState[1])
+    tmpWait[list(originWait.keys()).index(list(rsuList.keys())[rsuIndex])] += cpu / cpuTmp * ratio
+    newState = [serviceRate, tmpWait, tmpState]
+    # print(tmpWait)
+    metric = CalMetric(serviceRate, tmpWait, tmpWaitMax)
+    # print(metric, newState)
+    return newState, metric
+
+def output(res, rsuList, maxRatio):
+    with open('result.csv', 'w') as file:
+        for i in range(11):
+            file.write(str(res[0][i][0]) + ',')
+        file.write('\n')
+        for i in range(1, len(rsuList) + 1):
+            for j in range(maxRatio[i - 1]):
+                itemIndex = 1 + sum(maxRatio[:i - 1]) + j
+                for k in range(11):
+                    file.write(str(res[itemIndex][k][0]) + ',')
+                file.write('\n')
+        
+
 if __name__ == "__main__":
     rsuInfo = sys.argv[1][:-1].split(';')
     vehPos = sys.argv[2].replace('(', '').replace(')', '')
@@ -175,9 +237,7 @@ if __name__ == "__main__":
             etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
             etaRoad.append([etaRaw[i][0], float(etaRaw[i][1]) - etaStart])
 
-
-    # ----------------decision process----------------
-    # -----------here is a greedy algorithm-----------
+    # ---------------get rsu task list----------------
 
     decision = ''
     result = []
@@ -193,8 +253,11 @@ if __name__ == "__main__":
             line = line.strip().split(' ')
             for i in range(3, len(line)):
                 rsuWaits[line[0] + ';' + str(i - 2)] = (float(line[i]))
-    variance = calVariance(list(rsuWaits.values()))
-    optimal = -1000
+    # ----------------decision process----------------
+    # -----here is a dynamic programing algorithm-----
+    # -----step is 0.1, so ratio is mutiply by 10-----
+
+    serviceRoadList = {}
     for rsu, property in rsuList.items():
         operationTime = cpu / property['cpu'] + property['wait']
         rsuPos = rsu.replace('(', '').replace(')', '')
@@ -208,41 +271,94 @@ if __name__ == "__main__":
             if etaFinal[eta][1] > operationTime + transTime + relayTime:
                 target = etaFinal[eta - 1][0]
                 serviceRoad = etaRoad[eta - 1][0]
+                serviceRoadList[rsu] = serviceRoad
                 break
         else:
             target = etaFinal[-1][0]
             serviceRoad = etaRoad[-1][0]
-        # print(operationTime + transTime + relayTime,serviceRoad)
-        varianceGain = calFairnessGain(rsu, rsuWaits, operationTime, variance)
-        # serviceRate = calServiceRate(target, rsuPos)
-        serviceRate = calIntegralServiceRate(getRoadLength(serviceRoad, net, boundaries), rsuPos)
-        if 0.5 * varianceGain + 0.5 * serviceRate > optimal:
-            optimal = 0.5 * varianceGain + 0.5 * serviceRate
-            optimalRSU = rsuPos
-            optimalRelay = relays
-            optimalCore = core
-            optimalServiceRoad = serviceRoad
-    # print(optimalRSU, optimalRelay)
-    resultRSU = '(' + str(int(optimalRSU[0])) + ',' + str(int(optimalRSU[1])) + ',3);' + str(optimalCore) + '*1|'
+            serviceRoadList[rsu] = serviceRoad
+
+    maxRatio = []
+    for rsu, property in rsuList.items():
+        maxRatio.append(math.floor(min(rsuList[rsu]['mem'], mem) / mem * 10))
+    res = [[[-1, list(rsuWaits.values()), {}] for k in range(11)]]
+    for i in range(len(rsuList)):
+        for j in range(maxRatio[i]):
+            res.append([[-1, list(rsuWaits.values()), {}] for k in range(11)])
+    for j in range(11):
+        res[0][j][0] = 0
+    for i in range(1, len(rsuList) + 1):
+        for j in range(maxRatio[i - 1]):
+            itemIndex = 1 + sum(maxRatio[:i - 1]) + j
+            # print(itemIndex, j + 1)
+            for k in range(1, 11):
+                res[itemIndex][k] = res[itemIndex - 1][k]
+                # print(k, j + 1)
+                if k >= j + 1:
+                    newState, tmpMetric = calProfit((j + 1) / 10, i - 1, (k - j - 1) / 10, res[itemIndex - 1][k - j - 1], cpu, mem, rsuList, boundaries, serviceRoadList, rsuWaits, transTime, proxyPos, etaRoad, etaFinal)
+                    tmpWaitMax = copy.deepcopy(list(rsuWaits.values()))
+                    # tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu'] * (k - j - 1) / 10
+                    tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu']
+                    # print(tmpMetric)
+                    if tmpMetric > CalMetric(res[itemIndex][k][0], res[itemIndex][k][1], tmpWaitMax):
+                        res[itemIndex][k] = newState
+            #     else:
+            #         print(res[itemIndex - 1][k][2])
+            # if j == 2:
+            #     output(res, rsuList, maxRatio)
+            #     print('---------')
+            #     print(res[1][2][2])
+            #     print(res[2][2][2])
+            #     print(res[3][2][2])
+            #     exit()
+    
+    x = [False for i in range(sum(maxRatio))]
+    tmpWaitMax = copy.deepcopy(list(rsuWaits.values()))
+    tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu']
+    # output(res, rsuList, maxRatio)
+    w = 10
+    for i in range(len(rsuList), 0, -1):
+        for j in range(maxRatio[i - 1] - 1, -1, -1):
+            itemIndex = 1 + sum(maxRatio[:i - 1]) + j
+            if CalMetric(res[itemIndex][w][0], res[itemIndex][w][1], tmpWaitMax) > CalMetric(res[itemIndex - 1][w][0], res[itemIndex - 1][w][1], tmpWaitMax):
+                x[itemIndex - 1] = True
+                w -= j + 1
+    result = {}
+    for i in range(len(rsuList)):
+        for j in range(maxRatio[i]):
+            itemIndex = 1 + sum(maxRatio[:i]) + j
+            if x[itemIndex - 1]:
+                # has ratio
+                try:
+                    result[list(rsuList.keys())[i]] += (j + 1) / 10
+                except:
+                    result[list(rsuList.keys())[i]] = (j + 1) / 10
+    
+    # print(res[-1][-1][1])
+    # print(CalMetric(res[-1][-1][0], res[-1][-1][1], tmpWaitMax))
+    # print((res[-1][-1][0] + 1 / calVariance(res[-1][-1][1])) / 2)
+
+    decision = ''
     resultRelay = ''
-    for node in optimalRelay:
-        if node != optimalRSU and node != proxyPos:
-            resultRelay += '(' + str(int(node[0])) + ',' + str(int(node[1])) + ',3);'
-    if len(resultRelay) == 0:
-        resultRelay += 'NULL'
-    else:
-        resultRelay = resultRelay[:-1]
-    # print(resultRSU, resultRelay)
-    send(resultRSU, externalId + 'decision')
-    send(resultRelay, externalId + 'relay')
-    send(optimalServiceRoad, externalId + 'service')
-    print(resultRSU)
+    serviceRoad = ''
+    for k, v in result.items():
+        tmpResultRelay = ''
+        decision += k + '*' + str(round(v, 2)) + '|'
+        rsuPos = k.replace('(', '').replace(')', '')
+        rsuPos = [float(rsuPos.split(',')[0]), float(rsuPos.split(',')[1])]
+        tmpRelay = relay(proxyPos, rsuPos)
+        for node in tmpRelay:
+            if node != rsuPos and node != proxyPos:
+                tmpResultRelay += '(' + str(int(node[0])) + ',' + str(int(node[1])) + ',3);'
+        if len(tmpResultRelay) == 0:
+            tmpResultRelay += 'NULL'
+        resultRelay += tmpResultRelay + '|'
+        # serviceRoad += serviceRoadList[k] + '|'
+        serviceRoad += res[-1][-1][2][k][1] + '|'
+
+    print(decision)
     print(resultRelay)
-    print(optimalServiceRoad)
-
-    
-
-    
-        
-        
-        
+    print(serviceRoad)
+    send(decision, externalId + 'decision')
+    send(resultRelay, externalId + 'relay')
+    send(serviceRoad, externalId + 'service')

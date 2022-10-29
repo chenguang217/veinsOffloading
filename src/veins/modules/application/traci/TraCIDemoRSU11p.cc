@@ -182,7 +182,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         }
         serviceRoad = MapViewOfFile(hMapServiceRoad, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecisionGreedyPartial.py " + rsuInfo + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition);
+        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecisionDynamicProgram.py " + rsuInfo + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition);
         std::cout << "rsuInfo " << command << std::endl;
         int result = system(command.c_str());
         std::string tmpMainDecision((char*)decision);

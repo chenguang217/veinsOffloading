@@ -127,12 +127,27 @@ def calProfit(ratio, rsuIndex, allocateRatio, currentState, cpu, mem, rsuList, b
     relayTime = 0
     for i in range(len(relays) - 1):
         relayTime += mem * 8 / 1000 / maxRate
+    tmpEtaFinal = []
+    tmpEtaRoad = []
     for eta in range(len(etaFinal)):
-        if etaFinal[eta][1] > operationTime + transTime + relayTime:
-            serviceRoad = etaRoad[eta - 1][0]
+        if calDistance(etaFinal[eta][0], rsuPos) <= 1000:
+            tmpEtaFinal.append(etaFinal[eta])
+            tmpEtaRoad.append(etaRoad[eta - 1])
+    for eta in range(len(tmpEtaFinal)):
+        if tmpEtaFinal[eta][1] > operationTime + transTime + relayTime:
+            serviceRoad = tmpEtaRoad[eta][0]
             break
     else:
-        serviceRoad = etaRoad[-1][0]
+        serviceRoad = tmpEtaRoad[-1][0]
+    # print(serviceRoad, end=" ")
+    # for eta in range(len(etaFinal)):
+    #     if etaFinal[eta][1] > operationTime + transTime + relayTime and calDistance(etaFinal[eta][0], rsuPos) < 1000:
+    #         serviceRoad = etaRoad[eta][0]
+    #         break
+    # else:
+    #     serviceRoad = etaRoad[-1][0]
+    # print(serviceRoad)
+
     tmpState[list(rsuList.keys())[rsuIndex]][1] = serviceRoad
 
     serviceRate = 0
@@ -278,6 +293,7 @@ if __name__ == "__main__":
             serviceRoad = etaRoad[-1][0]
             serviceRoadList[rsu] = serviceRoad
 
+    # print(etaFinal)
     maxRatio = []
     for rsu, property in rsuList.items():
         maxRatio.append(math.floor(min(rsuList[rsu]['mem'], mem) / mem * 10))
@@ -337,7 +353,9 @@ if __name__ == "__main__":
     # print(res[-1][-1][1])
     # print(CalMetric(res[-1][-1][0], res[-1][-1][1], tmpWaitMax))
     # print((res[-1][-1][0] + 1 / calVariance(res[-1][-1][1])) / 2)
-
+    
+    # print(res[-1][-1])
+    
     decision = ''
     resultRelay = ''
     serviceRoad = ''
@@ -356,6 +374,9 @@ if __name__ == "__main__":
         # serviceRoad += serviceRoadList[k] + '|'
         serviceRoad += res[-1][-1][2][k][1] + '|'
 
+    # decision = '(1500,2500,3);4*1|'
+    # resultRelay = '(1500,1500,3);|'
+    # serviceRoad = '23339459|'
     print(decision)
     print(resultRelay)
     print(serviceRoad)

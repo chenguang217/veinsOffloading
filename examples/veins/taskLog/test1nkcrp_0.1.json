@@ -1,10 +1,10 @@
 {
 	"position": "(2339.85,1675.33,0)",
-	"deadLinePos": "(180.75,1408.84,0)",
+	"deadLinePos": "(394.49,1305.98,0)",
 	"servicePos": "(2500,1500,3)",
-	"cpu": "61.2368",
-	"mem": "7475.2",
-	"operationTime": "5.67008",
+	"cpu": "52.4288",
+	"mem": "6400",
+	"operationTime": "2.81875",
 	"serviceMode": 0,
 	"ratio": "0.1"
 }

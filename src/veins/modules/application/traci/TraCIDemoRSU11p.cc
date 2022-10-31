@@ -302,6 +302,19 @@ void TraCIDemoRSU11p::onTask(Task* frame)
                 if(tmpRelay == toString(curPosition)){
                     //relay node
                     double relayTime = newTask->getMem() * 8 / 1024 / maxRate;
+                    //change relay decision
+                    std::string newRelay = toString(newTask->getRelay());
+                    newRelay.erase(std::remove(newRelay.begin(), newRelay.end(), ' '), newRelay.end());
+                    int tmpPos = newRelay.find(toString(curPosition) + ";");
+                    std::cout << "here5 " << tmpPos << std::endl;
+                    if (tmpPos >-1)
+                    {
+                        newRelay.erase(tmpPos, toString(curPosition).length() + 1);
+                    }
+                    // newRelay.erase(std::remove(newRelay.begin(), newRelay.end(), toString(curPosition) + ";"), newRelay.end());
+                    std::cout << "here4 " << newRelay << " " << toString(curPosition) << std::endl;
+                    newTask->setRelay(newRelay.c_str());
+
                     std::cout << "relay here " << curPosition << " time " << relayTime << std::endl;
                     scheduleAt(simTime() + relayTime, newTask->dup());
                     break;
@@ -379,7 +392,7 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
         tmpResultLocal = strtok( NULL, delims );
         if(newTask->getSenderType() == 1){
             // send back
-            std::cout << "ready to send back" << std::endl;
+            // std::cout << "ready to send back " << simTime() << std::endl;
             std::list<std::string>::iterator it;
             switch(atoi(toString(tmpResultLocal).c_str())){
                 case 1 :
@@ -421,10 +434,12 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
             }
             std::map<LAddress::L2Type, Coord>::iterator it2;
             std::map<LAddress::L2Type, std::string>::iterator itRoad = NodeRoad.begin();
+            bool ifSend = 0;
             // need a new strategy
             for(it2 = NodePositions.begin(); it2 != NodePositions.end(); it2++) {
                 std::cout << "scan veh " << it2->first << std::endl;
                 if(it2->first == newTask->getSenderAddress()){
+                    ifSend = 1;
                     LPVOID backDecision;
                     HANDLE hMapBackDecision = NULL;
                     hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
@@ -441,7 +456,7 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                         newTask->setSenderPos(curPosition);
                         double operationTime = newTask->getOperationTime();
                         double transmissionTime = newTask->getTransmissionTime();
-                        double taskMem = newTask->getMem();
+                        double taskMem = newTask->getMem() * newTask->getRatio();
                         mem += taskMem;
                         std::cout << "number of task is " << taskQueue1.size() << " wait time is " << taskWait1 << std::endl;
                         sendDown(newTask->dup());
@@ -473,6 +488,9 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                     }
                 }
                 itRoad++;
+            }
+            if(ifSend == 0){
+                scheduleAt(simTime() + 1, newTask->dup());
             }
         }
         else if(toString(tmpDesLocal) == toString(curPosition)){

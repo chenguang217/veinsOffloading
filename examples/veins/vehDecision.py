@@ -113,8 +113,14 @@ if __name__ == "__main__":
 
     # -----------generate deadline-----------
 
-    deadLinePosition = random.choice(roads[roads.index(road) + 3:]) # 把deadline加入到新的共享内存中 ** deadline最少与当前道路隔三条路，确保世界可以执行完成
-    # deadLinePosition = '4006702#0'
+    deadLinePosition = random.choice(roads[roads.index(road) + 3:]) # 把deadline加入到新的共享内存中 ** deadline最少与当前道路隔三条路，确保实际可以执行完成
+
+    # for road in roads:
+    #     tmp = net.getEdge(road).getFromNode().getCoord()
+    #     boundaries = net.getBoundary()
+    #     tmp = [tmp[0] - boundaries[0], boundaries[3] - tmp[1]]
+    #     print(road, tmp)
+    # deadLinePosition = '4006702#1'
     deadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
     boundaries = net.getBoundary()
     deadPosition = [deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]]

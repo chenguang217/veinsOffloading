@@ -112,7 +112,7 @@ void TraCIDemo11p::onTask(Task* frame)
             std::cout << iteMap->first;
             std::cout << ":";
             std::cout << iteMap->second << endl;
-            if(iteMap->second >= 1.0){
+            if(iteMap->second >= 0.9999){
                 std::cout << "this finished" << endl;
                 taskList.erase(iteMap++);
                 std::ofstream outfile;
@@ -134,7 +134,7 @@ void TraCIDemo11p::onTask(Task* frame)
             std::cout << iteMap->first;
             std::cout << ":";
             std::cout << iteMap->second << endl;
-            if(iteMap->second == 1.0){
+            if(iteMap->second >= 0.9999){
                 std::cout << "this finished" << endl;
                 taskList.erase(iteMap++);
                 std::ofstream outfile;

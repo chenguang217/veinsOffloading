@@ -195,15 +195,17 @@ def run_sumo(runpath, sumo_command, shlex, config_file_name, remote_port, seed, 
     sumo_end = None
     sumo_returncode = -1
     sumo_status = None
+    # sumo = subprocess.Popen([sumo_command, "-c", config_file_name, "--route-steps", "500"], cwd=runpath, stdin=None, stdout=sumoLogOut, stderr=sumoLogErr)
     try:
         cmd = []
         if shlex:
             import shlex
-            cmd = shlex.split(sumo_command.replace('{}', '-c ' + config_file_name))
+            cmd = shlex.split(sumo_command.replace('{}', '-c ' + config_file_name + ' -s 0'))
         else:
-            cmd = [sumo_command, "-c", config_file_name] 
+            cmd = [sumo_command, "-c", config_file_name, "-s", "0"] 
         logging.info("Starting SUMO (%s) on port %d, seed %d" % (" ".join(cmd), remote_port, seed))
         sumo = subprocess.Popen(cmd, cwd=runpath, stdin=None, stdout=sumoLogOut, stderr=sumoLogErr)
+        time.sleep(60)
 
         sumo_socket = None
 

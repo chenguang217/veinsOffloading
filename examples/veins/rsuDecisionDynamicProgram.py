@@ -185,6 +185,7 @@ if __name__ == "__main__":
     vehPos = [float(vehPos.split(',')[0]), float(vehPos.split(',')[1])]
     deadLinePos = sys.argv[3].replace('(', '').replace(')', '')
     deadLinePos = [float(deadLinePos.split(',')[0]), float(deadLinePos.split(',')[1])]
+
     cpu = float(sys.argv[4])
     mem = float(sys.argv[5])
     externalId = sys.argv[6]
@@ -247,6 +248,7 @@ if __name__ == "__main__":
         elif abs(tmpNode[0] - deadLinePos[0]) < 0.05 and abs(tmpNode[1] - deadLinePos[1]) < 0.05:
             etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
             etaRoad.append([etaRaw[i][0], float(etaRaw[i][1]) - etaStart])
+            send(etaRaw[i][0], externalId + 'dead')
             break
         elif flag:
             etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])

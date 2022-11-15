@@ -27,6 +27,9 @@
 #include <list>
 #include <stdexcept>
 #include <sstream>
+#include <map>
+#include <vector>
+#include <list>
 
 #include "veins/base/modules/BaseMobility.h"
 #include "veins/base/utils/FindModule.h"
@@ -193,6 +196,13 @@ protected:
     double last_speed;
 
     bool isParking;
+
+    std::map<std::string, std::vector<float>> speed_map;
+    std::vector<float> speeds;
+    std::vector<float>::iterator speeds_it;
+    std::list<std::string> roads;
+    std::list<std::string>::iterator roads_it;
+
 
     void fixIfHostGetsOutside() override; /**< called after each read to check for (and handle) invalid positions */
 

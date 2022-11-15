@@ -110,6 +110,43 @@ void TraCIMobility::initialize(int stage)
             stopAccidentMsg = new cMessage("scheduledAccidentResolved");
             scheduleAt(simTime() + accidentStart, startAccidentMsg);
         }
+        if (speed_map.size() == 0)
+        {
+//            std::cout << "initialize speed xml" << endl;
+            std::ifstream spe_file("erlangen.spe.xml");
+            std::string line;
+            while (std::getline(spe_file, line))
+            {
+                std::stringstream ss(line);
+                std::string no;
+                if (!(ss >> no)) {
+                    continue;
+                }
+                float speed;
+                std::vector<float> tmpSpeeds;
+                while (ss >> speed)
+                {
+                    tmpSpeeds.push_back(speed);
+                    // std::cout << "speed " << speed << std::endl;
+                }
+                // std::cout << "externalId " << no << std::endl;
+                speed_map[no] = tmpSpeeds;
+            }
+            // std::cout << "read " << speed_map.size() << " car speed" << endl;
+        }
+        // std::map<std::string, std::vector<float>>::iterator it;
+        // for(it = speed_map.begin(); it != speed_map.end(); it++) {
+        //     std::vector<float> tmpSpeed = it->second;
+        //     std::vector<float>::iterator tmpSpeed2 = tmpSpeed.begin();
+        //     std::cout << it->first << " " << *(tmpSpeed2) << std::endl;
+        // }
+        speeds = speed_map[external_id];
+        speeds_it = speeds.begin();
+        std::cout << external_id << " speed_it is " << *(speeds_it) << std::endl;
+        float tmpSpeed = *(speeds_it);
+        getVehicleCommandInterface()->setSpeed(tmpSpeed);
+        roads = getVehicleCommandInterface()->getPlannedRoadIds();
+        roads_it = ++roads.begin();
     }
     else if (stage == 1) {
         // don't call BaseMobility::initialize(stage) -- our parent will take care to call changePosition later
@@ -240,27 +277,38 @@ void TraCIMobility::changePosition(std::string objectId, std::string road_id)
     move.setOrientationByVector(heading.toCoord());
     //EV_DEBUG << "new ADD setHostSpeed" << this->setHostSpeed << endl;
 
-    std::ifstream infile("routesV\\" + objectId + ".csv");
-    std::string line;
-    double tmpSpeed=5;
-    while (getline(infile, line)){
-        std::stringstream ss(line);
-        std::string token;
-        ss >> token;
-        if(token == road_id){
-            ss >> token;
-            tmpSpeed = stod(token);
-            break;
-        }
+    if (roads_it != roads.end() && road_id == *roads_it) {
+        float tmpSpeed = *(++speeds_it);
+        std::cout << "road changed, speed is " << tmpSpeed << std::endl;
+        getVehicleCommandInterface()->setSpeed(tmpSpeed);
+        ++roads_it;
     }
-    EV_DEBUG << "here3 " << speed << std::endl;
-    EV_DEBUG << "tmpSpeed " << tmpSpeed << std::endl;
+    else{
+        float tmpSpeed = *(speeds_it);
+        getVehicleCommandInterface()->setSpeed(tmpSpeed);
+    }
+
+    // std::ifstream infile("routesV\\" + objectId + ".csv");
+    // std::string line;
+    // double tmpSpeed=5;
+    // while (getline(infile, line)){
+    //     std::stringstream ss(line);
+    //     std::string token;
+    //     ss >> token;
+    //     if(token == road_id){
+    //         ss >> token;
+    //         tmpSpeed = stod(token);
+    //         break;
+    //     }
+    // }
+    // EV_DEBUG << "here3 " << speed << std::endl;
+    // EV_DEBUG << "tmpSpeed " << tmpSpeed << std::endl;
     //read file and use bellow function to set speed.
-    getVehicleCommandInterface()->setSpeed(tmpSpeed);
-    if (this->setHostSpeed) {
-        move.setSpeed(speed);
-        EV_DEBUG << "here4 "<< speed << std::endl;
-    }
+    // getVehicleCommandInterface()->setSpeed(tmpSpeed);
+    // if (this->setHostSpeed) {
+    //     move.setSpeed(speed);
+    //     EV_DEBUG << "here4 "<< speed << std::endl;
+    // }
     fixIfHostGetsOutside();
     updatePosition();
 }

@@ -85,7 +85,7 @@ void TraCIDemoRSU11p::initialize(int stage)
         rm->setSenderAddress(myId);
         rm->setSenderPos(curPosition);
         rm->setSenderType(0);
-        scheduleAt(simTime() + uniform(0.01, 0.2), rm);
+        scheduleAt(simTime() + uniform(1.01, 1.2), rm);
     }
 }
 
@@ -106,10 +106,10 @@ void TraCIDemoRSU11p::onRM(ReportMessage* frame)
             NodeRoad.insert(std::make_pair(sender, roadId));
         }
         else {
-            it->second = time;
-            itRoad = NodeRoad.find(sender);
-            itRoad->second = roadId;
+            connectedNodes[sender] = time;
+            NodeRoad[sender] = roadId;
         }
+        // delete rm;
         findHost()->getDisplayString().setTagArg("t", 0, connectedNodes.size());
     }
 }
@@ -182,12 +182,21 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         }
         serviceRoad = MapViewOfFile(hMapServiceRoad, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
+        LPVOID deadRoad;
+        HANDLE hMapDeadRoad = NULL;
+        hMapDeadRoad = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "dead").c_str());
+        if (hMapDeadRoad == NULL) {
+            hMapDeadRoad = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "dead").c_str());
+        }
+        deadRoad = MapViewOfFile(hMapDeadRoad, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
         std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecisionDynamicProgram.py " + rsuInfo + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition);
         std::cout << "rsuInfo " << command << std::endl;
         int result = system(command.c_str());
         std::string tmpMainDecision((char*)decision);
         std::string tmpMainRelay((char*)relay);
         std::string tmpMainRoad((char*)serviceRoad);
+        std::string tmpDead((char*)deadRoad);
         std::vector<std::string> tmpMainDecisionVector = split(trim(tmpMainDecision), "|");
         std::vector<std::string> tmpMainRelayVector = split(trim(tmpMainRelay), "|");
         std::vector<std::string> tmpMainRoadVector = split(trim(tmpMainRoad), "|");
@@ -214,6 +223,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
             }
             taskSplit->setService(tmpMainRoadVector[i].c_str());
             taskSplit->setTransmissionTime(transmissionTime);
+            taskSplit->setDead(trim(tmpDead).c_str());
             std::cout << "task part, transmissionTime " << transmissionTime << " decision " << tmpMainDecisionVector[i] << " ratio " << taskSplit->getRatio() << std::endl;
             scheduleAt(simTime() + transmissionTime, taskSplit->dup());
         }
@@ -346,14 +356,14 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
         rm->setCpu(cpu);
         rm->setMem(mem);
         rm->setWait(taskWait1 - simTime());
-        scheduleAt(simTime() + 2, rm);
+        scheduleAt(simTime() + 5, rm);
         sendDown(rm->dup());
 
         std::map<LAddress::L2Type, simtime_t>::iterator it;
         std::map<LAddress::L2Type, Coord>::iterator itCoord=NodePositions.begin();
         std::map<LAddress::L2Type, std::string>::iterator itRoad=NodeRoad.begin();
         for(it = connectedNodes.begin(); it != connectedNodes.end(); it++) {
-            if (simTime() - it->second >= 3.5) {
+            if (simTime() - it->second >= 10) {
                 connectedNodes.erase(it++);
                 NodePositions.erase(itCoord++);
                 NodeRoad.erase(itRoad++);
@@ -361,25 +371,45 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                     break;
                 }
             }
-            itCoord++;
         }
         findHost()->getDisplayString().setTagArg("t", 0, connectedNodes.size());
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe RSUState.py " + toString(curPosition) + " \"";
-        // multi-core state record
+        // saving woring state, replacing python call
+        std::ifstream in("rsus.csv");
+        std::string strFileData = "";
+        std::string tmpLineData = "";
+        while (std::getline(in, tmpLineData)){
+            std::vector<std::string> tmpString = split(tmpLineData, " ");
+            if (toString(curPosition) == tmpString[0]){
+                strFileData += tmpString[0] + " ";
+                strFileData += toString(cpu) + " " + toString(mem) + " " + toString(taskWait1 - simTime()) + " " + toString(taskWait2 - simTime()) + " " + toString(taskWait3 - simTime()) + " " + toString(taskWait4 - simTime());
+                strFileData += "\n";
+            }
+            else{
+                strFileData += tmpLineData;
+                strFileData += "\n";
+            }
+            // std::cout << "tmp " << tmpString[0] << std::endl;
+        }
+        in.close();
+        std::ofstream out("rsus.csv");
+        out.flush();
+        out<<strFileData;
+        out.close();
+        std::ofstream outfile("RSUlog\\" + toString(curPosition), std::ios::app);
         for(auto const &i: taskQueue1) {
-            command += i + ",";
+            outfile << trim(i) + ",";
         }
         for(auto const &i: taskQueue2) {
-            command += i + ",";
+            outfile << trim(i) + ",";
         }
         for(auto const &i: taskQueue3) {
-            command += i + ",";
+            outfile << trim(i) + ",";
         }
         for(auto const &i: taskQueue4) {
-            command += i + ",";
+            outfile << trim(i) + ",";
         }
-        command += + "\" " + toString(cpu) + " " + toString(mem) + " " + toString(taskWait1) + " " + toString(taskWait2) + " " + toString(taskWait3) + " " + toString(taskWait4) + " " + toString(simTime());
-        int result = system(command.c_str());
+        outfile << ";" + toString(mem) + "," + toString(taskWait1 - simTime()) + "," + toString(taskWait2 - simTime()) + "," + toString(taskWait3 - simTime()) + "," + toString(taskWait4 - simTime()) + "," + toString(simTime()) << std::endl;
+        outfile.close();
     }
     else if (Task* newTask = dynamic_cast<Task*>(msg)) {
         std::string tmpDes = toString(newTask->getDecision());
@@ -440,19 +470,35 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                 std::cout << "scan veh " << it2->first << std::endl;
                 if(it2->first == newTask->getSenderAddress()){
                     ifSend = 1;
-                    LPVOID backDecision;
-                    HANDLE hMapBackDecision = NULL;
-                    hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
-                    if (hMapBackDecision == NULL) {
-                        hMapBackDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (trim(toString(newTask->getName())) + "sendback").c_str());
+                    
+                    std::string roads = newTask->getRoads();
+                    std::vector<std::string> roadList = split(roads, ";");
+                    int presentIndex = -1;
+                    int serviceIndex = -1;
+                    int deadlineIndex = -1;
+                    std::cout << "serviceRoad " << newTask->getService() << std::endl;
+                    for (int i = 0; i < roadList.size(); ++i){
+                        // std::cout << "roadListReceived " << roadList[i] << std::endl;
+                        if(itRoad->second == roadList[i]){
+                            presentIndex = i;
+                        }
+                        if(trim(toString(newTask->getService())) == roadList[i]){
+                            serviceIndex = i;
+                        }
+                        if(toString(newTask->getDead()) == roadList[i]){
+                            deadlineIndex = i;
+                        }
                     }
-                    backDecision = MapViewOfFile(hMapBackDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-                    //already scan vehicle, needs findout the service location
-                    std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuSendback.py " + itRoad->second + " " + newTask->getExternalId() + " " + trim(toString(newTask->getName())) + " " + toString(newTask->getDeadlinePos()) + " " + trim(toString(newTask->getService()));
-                    std::cout << "send back command " << command << std::endl;
-                    int result = system(command.c_str());
-                    std::string tmpSendback((char*)backDecision);
-                    if(atoi(tmpSendback.c_str()) == 1){
+                    // std::cout << "indexs " << presentIndex << " " << serviceIndex << " " << deadlineIndex << std::endl;
+                    // if(presentIndex == -1 || serviceIndex == -1 || deadlineIndex == -1){
+                    //     break;
+                    // }
+                    if(presentIndex < serviceIndex){
+                        std::cout << "task fininshed, but vehicle not arrive" << std::endl;
+                        scheduleAt(simTime() + 5, newTask->dup());
+                        break;
+                    }
+                    else if(presentIndex == serviceIndex){
                         newTask->setSenderPos(curPosition);
                         double operationTime = newTask->getOperationTime();
                         double transmissionTime = newTask->getTransmissionTime();
@@ -462,12 +508,7 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                         sendDown(newTask->dup());
                         break;
                     }
-                    else if(atoi(tmpSendback.c_str()) == 0){
-                        std::cout << "task fininshed, but vehicle not arrive" << std::endl;
-                        scheduleAt(simTime() + 1, newTask->dup());
-                        break;
-                    }
-                    else if(atoi(tmpSendback.c_str()) == 3){
+                    else if(presentIndex > deadlineIndex){
                         std::cout << "task didn't finish on time, vehicle have pass through deadline" << std::endl;
                         std::ofstream outfile;
                         outfile.open("taskLog/" + trim(toString(newTask->getName())) + ".json");
@@ -475,6 +516,18 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                         break;
                     }
                     else{
+                        LPVOID backDecision;
+                        HANDLE hMapBackDecision = NULL;
+                        hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
+                        if (hMapBackDecision == NULL) {
+                            hMapBackDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (trim(toString(newTask->getName())) + "sendback").c_str());
+                        }
+                        backDecision = MapViewOfFile(hMapBackDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                        //already scan vehicle, needs findout the service location
+                        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuSendback.py " + itRoad->second + " " + newTask->getExternalId() + " " + trim(toString(newTask->getName())) + " " + toString(newTask->getDeadlinePos()) + " " + trim(toString(newTask->getService()));
+                        std::cout << "send back command " << command << std::endl;
+                        int result = system(command.c_str());
+                        std::string tmpSendback((char*)backDecision);
                         std::cout << "task finish later than service road, need record task sendback length" << std::endl;
                         newTask->setSenderPos(curPosition);
                         double operationTime = newTask->getOperationTime();
@@ -486,6 +539,53 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                         mem += taskMem;
                         sendDown(newTask->dup());
                     }
+                    
+                    // LPVOID backDecision;
+                    // HANDLE hMapBackDecision = NULL;
+                    // hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
+                    // if (hMapBackDecision == NULL) {
+                    //     hMapBackDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (trim(toString(newTask->getName())) + "sendback").c_str());
+                    // }
+                    // backDecision = MapViewOfFile(hMapBackDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                    // //already scan vehicle, needs findout the service location
+                    // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuSendback.py " + itRoad->second + " " + newTask->getExternalId() + " " + trim(toString(newTask->getName())) + " " + toString(newTask->getDeadlinePos()) + " " + trim(toString(newTask->getService()));
+                    // std::cout << "send back command " << command << std::endl;
+                    // int result = system(command.c_str());
+                    // std::string tmpSendback((char*)backDecision);
+                    // if(atoi(tmpSendback.c_str()) == 1){
+                    //     newTask->setSenderPos(curPosition);
+                    //     double operationTime = newTask->getOperationTime();
+                    //     double transmissionTime = newTask->getTransmissionTime();
+                    //     double taskMem = newTask->getMem() * newTask->getRatio();
+                    //     mem += taskMem;
+                    //     std::cout << "number of task is " << taskQueue1.size() << " wait time is " << taskWait1 << std::endl;
+                    //     sendDown(newTask->dup());
+                    //     break;
+                    // }
+                    // else if(atoi(tmpSendback.c_str()) == 0){
+                    //     std::cout << "task fininshed, but vehicle not arrive" << std::endl;
+                    //     scheduleAt(simTime() + 1, newTask->dup());
+                    //     break;
+                    // }
+                    // else if(atoi(tmpSendback.c_str()) == 3){
+                    //     std::cout << "task didn't finish on time, vehicle have pass through deadline" << std::endl;
+                    //     std::ofstream outfile;
+                    //     outfile.open("taskLog/" + trim(toString(newTask->getName())) + ".json");
+                    //     outfile << "failed" << std::endl;
+                    //     break;
+                    // }
+                    // else{
+                    //     std::cout << "task finish later than service road, need record task sendback length" << std::endl;
+                    //     newTask->setSenderPos(curPosition);
+                    //     double operationTime = newTask->getOperationTime();
+                    //     double transmissionTime = newTask->getTransmissionTime();
+                    //     double taskMem = newTask->getMem();
+                    //     //set length and set sender type
+                    //     newTask->setService((char*)backDecision);
+                    //     newTask->setSenderType(2);
+                    //     mem += taskMem;
+                    //     sendDown(newTask->dup());
+                    // }
                 }
                 itRoad++;
             }

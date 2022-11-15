@@ -114,14 +114,54 @@ if __name__ == "__main__":
     # -----------generate deadline-----------
 
     deadLinePosition = random.choice(roads[roads.index(road) + 3:]) # 把deadline加入到新的共享内存中 ** deadline最少与当前道路隔三条路，确保实际可以执行完成
+    deadLinePosition = '5931612'
+    print(deadLinePosition)
 
-    # for road in roads:
-    #     tmp = net.getEdge(road).getFromNode().getCoord()
-    #     boundaries = net.getBoundary()
-    #     tmp = [tmp[0] - boundaries[0], boundaries[3] - tmp[1]]
-    #     print(road, tmp)
-    # deadLinePosition = '4006702#1'
+    # # for road in roads:
+    # #     tmp = net.getEdge(road).getFromNode().getCoord()
+    # #     boundaries = net.getBoundary()
+    # #     tmp = [tmp[0] - boundaries[0], boundaries[3] - tmp[1]]
+    # #     print(road, tmp)
+    # # deadLinePosition = '4006702#1'
+    # tmpDeadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
+    # deadPosition = net.getEdge(deadLinePosition)
+    # shapes = deadPosition.getShape()
+    # minDiffX = 10000
+    # minDiffY = 10000
+    # finalDead = [0, 0]
+    # for node in shapes:
+    #     if abs(node[0] - tmpDeadPosition[0]) < minDiffX and abs(node[1] - tmpDeadPosition[1]) < minDiffY:
+    #         minDiffX = abs(node[0] - tmpDeadPosition[0])
+    #         minDiffY = abs(node[1] - tmpDeadPosition[1])
+    #         finalDead = node
+    # deadPosition = deadPosition.getFromNode().getCoord()
+
+    # # boundaries = net.getBoundary()
+    # # tmpDeadPosition = net.getEdge('8364476').getFromNode().getCoord()
+    # # tmpDeadPosition = [tmpDeadPosition[0] - boundaries[0], boundaries[3] - tmpDeadPosition[1]]
+    # # for node in net.getEdge('8364476').getShape():
+    # #     print([node[0] - boundaries[0], boundaries[3] - node[1]])
+    # # print(tmpDeadPosition)
+    
+    
+    # # position adjust
+
+
+    # boundaries = net.getBoundary()
+    # finalDead = [finalDead[0] - boundaries[0], boundaries[3] - finalDead[1]]
+    # deadPosition = [deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]]
+    # # finalDead[0] += 20
+    # # finalDead[1] += 20
+    # # print(finalDead)
+    # # print([deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]])
+    # # print(str(deadPosition[0] - boundaries[0]), str(boundaries[3] - deadPosition[1]))
+    # send(str(finalDead[0]), externalID + 'deadLinePosX')
+    # send(str(finalDead[1]), externalID + 'deadLinePosY')
+
     deadPosition = net.getEdge(deadLinePosition).getFromNode().getCoord()
+    # position adjust
+
+
     boundaries = net.getBoundary()
     deadPosition = [deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]]
     # print([deadPosition[0] - boundaries[0], boundaries[3] - deadPosition[1]])

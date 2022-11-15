@@ -30,7 +30,7 @@ Define_Module(veins::TraCIDemo11p);
 double U_Random();
 int possion();
 int maxTask = 1;
-double generateP = 0.0;
+double generateP = 1 - 0.0;
 
 
 template<typename T> std::string toString(const T& t) {
@@ -103,9 +103,21 @@ void TraCIDemo11p::onTask(Task* frame)
     if (newTask->getSenderType() == 1 && newTask->getSenderAddress() == myId) {
         taskList[trim1(toString(newTask->getName()))] = taskList[trim1(toString(newTask->getName()))] + newTask->getRatio();
         std::cout << "task finished" << std::endl;
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + trim1(toString(newTask->getName())) + " 0 " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
-        std::cout << "finished " << command << std::endl;
-        int result = system(command.c_str());
+        // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + trim1(toString(newTask->getName())) + " 0 " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
+        // std::cout << "finished " << command << std::endl;
+        // int result = system(command.c_str());
+        std::ofstream outfile;
+        outfile.open("taskLog/" + trim1(toString(newTask->getName())) + "_" + toString(taskList[trim1(toString(newTask->getName()))]) + ".json");
+        outfile << "{" << std::endl << "\t\"position\": \"" << toString(curPosition) << "\"," << std::endl;
+        outfile << "\t\"deadLinePos\": \"" << toString(newTask->getDeadlinePos()) << "\"," << std::endl;
+        outfile << "\t\"servicePos\": \"" << toString(newTask->getSenderPos()) << "\"," << std::endl;
+        outfile << "\t\"cpu\": \"" << toString(newTask->getCPU()) << "\"," << std::endl;
+        outfile << "\t\"mem\": \"" << toString(newTask->getMem()) << "\"," << std::endl;
+        outfile << "\t\"operationTime\": \"" << toString(newTask->getOperationTime()) << "\"," << std::endl;
+        outfile << "\t\"serviceMode\": \"0\"," << std::endl;
+        outfile << "\t\"ratio\": \"" << toString(newTask->getRatio()) << "\"" << std::endl;
+        outfile << "}";
+
         std::map<std::string, double>::const_iterator iteMap = taskList.begin();
         for(; iteMap != taskList.end(); ++ iteMap)
         {
@@ -125,9 +137,21 @@ void TraCIDemo11p::onTask(Task* frame)
     else if (newTask->getSenderType() == 2 && newTask->getSenderAddress() == myId) {
         taskList[trim1(toString(newTask->getName()))] = taskList[trim1(toString(newTask->getName()))] + newTask->getRatio();
         std::cout << "task finished" << std::endl;
-        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName() + " " + toString(newTask->getService()) + " " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
-        std::cout << "finished " << command << std::endl;
-        int result = system(command.c_str());
+        // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName() + " " + toString(newTask->getService()) + " " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
+        // std::cout << "finished " << command << std::endl;
+        // int result = system(command.c_str());
+                std::ofstream outfile;
+        outfile.open("taskLog/" + trim1(toString(newTask->getName())) + "_" + toString(taskList[trim1(toString(newTask->getName()))]) + ".json");
+        outfile << "{" << std::endl << "\t\"position\": \"" << toString(curPosition) << "\"," << std::endl;
+        outfile << "\t\"deadLinePos\": \"" << toString(newTask->getDeadlinePos()) << "\"," << std::endl;
+        outfile << "\t\"servicePos\": \"" << toString(newTask->getSenderPos()) << "\"," << std::endl;
+        outfile << "\t\"cpu\": \"" << toString(newTask->getCPU()) << "\"," << std::endl;
+        outfile << "\t\"mem\": \"" << toString(newTask->getMem()) << "\"," << std::endl;
+        outfile << "\t\"operationTime\": \"" << toString(newTask->getOperationTime()) << "\"," << std::endl;
+        outfile << "\t\"serviceMode\": \"" << trim1(toString(newTask->getService())) << "\"," << std::endl;
+        outfile << "\t\"ratio\": \"" << toString(newTask->getRatio()) << "\"" << std::endl;
+        outfile << "}";
+
         std::map<std::string, double>::const_iterator iteMap = taskList.begin();
         for(; iteMap != taskList.end(); ++ iteMap)
         {
@@ -187,10 +211,10 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     std::map<LAddress::L2Type, simtime_t>::iterator itWait=RSUwaits.begin();
     std::string roadIdTmp = mobility->getRoadId();
     std::string externalId = mobility->getExternalId();
-    std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe posRecord.py " + externalId + " " + roadIdTmp + " " + toString(simTime());
-    int result = system(command.c_str());
+    // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe posRecord.py " + externalId + " " + roadIdTmp + " " + toString(simTime());
+    // // int result = system(command.c_str());
     for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
-        if (simTime() - it->second >= 6) {
+        if (simTime() - it->second >= 10) {
             // std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
             connectedRSUs.erase(it++);
             RSUPositions.erase(itCoord++);
@@ -209,12 +233,12 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     // std::cout << "position x " << curPosition.x << " if equal " << std::endl;
     if (lastroadID == ""){
         lastroadID = mobility->getRoadId();
-        std::cout << myId << " is at " << lastroadID << std::endl;
+        // std::cout << myId << " is at " << lastroadID << std::endl;
     }
     if (startflag == 1 && startgenerate == 0){
     // if (startflag == 1){
         double gratio = U_Random();
-        std::cout << "the gratio is" << gratio << std::endl;
+        // std::cout << "the gratio is" << gratio << std::endl;
         if (gratio > generateP){
             startgenerate = 1;
         }
@@ -243,9 +267,25 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 task->setRoadId(roadId.c_str());
                 task->setSenderType(0);
 
-                std::string tmp = "";
+                // generate deadline road
+                std::list<std::string> roadList = mobility->getVehicleCommandInterface()->getPlannedRoadIds();
+                std::list<std::string>::iterator itRoad = roadList.begin();
+                std::string roads = "";
+                for(int i = 0; i < roadList.size(); i++){
+                    roads = roads + *itRoad + ";";
+                    itRoad++;
+                }
+                task->setRoads(roads.c_str());
+                // int deadIndex = int(U_Random() * (roadList.size() - presentIndex) + presentIndex);
+                // itRoad = roadList.begin();
+                // for(int i = 0; i < deadIndex; i++){
+                //     itRoad++;
+                // }
+                // std::string deadRoad = *itRoad;
+                // task->setDeadline(deadRoad.c_str());
+
+                // get proxy RSU and find available RSU list
                 std::map<LAddress::L2Type, Coord>::iterator it;
-                // add cpu mem wait in decision string
                 std::map<LAddress::L2Type, long>::iterator itCpu = RSUcpus.begin();
                 std::map<LAddress::L2Type, long>::iterator itMem = RSUmems.begin();
                 std::map<LAddress::L2Type, simtime_t>::iterator itWait = RSUwaits.begin();
@@ -306,6 +346,8 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 if (result == 0 && startflag == 1){
                     startflag = 0;
                 }
+                // std::tuple<std::string, double, uint8_t> tmp = traci->getRoadMapPos(task->getDeadlinePos());
+                // std::cout << "deadline road " << std::get<0>(tmp) << " " << task->getDeadlinePos() << std::endl;
                 // std::cout << ifSend << std::endl;
                 task->setName((char*)pBuffer);
                 task->setPossibleRSUs((char*)pBufferDecision);
@@ -313,6 +355,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
             }
         }
     }
+
     // if (curPosition.x >= 2407.16 && ifSend <= 1){
         
     //     // generate Task Message
@@ -403,31 +446,32 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     //     scheduleAt(simTime() + uniform(0.01, 0.2), task->dup());
     // }
     DemoBaseApplLayer::handlePositionUpdate(obj);
+    lastDroveAt = simTime();
     // stopped for for at least 10s?
-    if (mobility->getSpeed() < 5) {
-        if (simTime() - lastDroveAt >= 10 && sentMessage == false) {
-            findHost()->getDisplayString().setTagArg("i", 1, "red");
-            sentMessage = true;
+    // if (mobility->getSpeed() < 5) {
+    //     if (simTime() - lastDroveAt >= 10 && sentMessage == false) {
+    //         // findHost()->getDisplayString().setTagArg("i", 1, "red");
+    //         sentMessage = true;
 
-            TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
-            populateWSM(wsm);
-            wsm->setDemoData(mobility->getRoadId().c_str());
+    //         // TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
+    //         // populateWSM(wsm);
+    //         // wsm->setDemoData(mobility->getRoadId().c_str());
 
-            // host is standing still due to crash
-            if (dataOnSch) {
-                startService(Channel::sch2, 42, "Traffic Information Service");
-                // started service and server advertising, schedule message to self to send later
-                scheduleAt(computeAsynchronousSendingTime(1, ChannelType::service), wsm);
-            }
-            else {
-                // send right away on CCH, because channel switching is disabled
-                sendDown(wsm);
-            }
-        }
-    }
-    else {
-        lastDroveAt = simTime();
-    }
+    //         // // host is standing still due to crash
+    //         // if (dataOnSch) {
+    //         //     startService(Channel::sch2, 42, "Traffic Information Service");
+    //         //     // started service and server advertising, schedule message to self to send later
+    //         //     scheduleAt(computeAsynchronousSendingTime(1, ChannelType::service), wsm);
+    //         // }
+    //         // else {
+    //         //     // send right away on CCH, because channel switching is disabled
+    //         //     sendDown(wsm);
+    //         // }
+    //     }
+    // }
+    // else {
+    //     lastDroveAt = simTime();
+    // }
 }
 
 int possion()

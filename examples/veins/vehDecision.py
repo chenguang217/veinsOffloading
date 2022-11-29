@@ -86,14 +86,15 @@ def baseLine_ShortestFirst(position):
 RSUs = []
 
 if __name__ == "__main__":
-    info = sys.argv[1]
+    info2 = sys.argv[1]
     net = sumolib.net.readNet('erlangen.net.xml')
     externalID = sys.argv[2]
     road = sys.argv[3]
     rsuInfo = sys.argv[4]
     position = sys.argv[5]
     cpuRequirement = float(sys.argv[6])
-    rsuRaw = rsuInfo.split(';')
+    rsuRaw = rsuInfo[:-1].split(';')
+    # print(rsuInfo, rsuRaw)
     for info in rsuRaw:
         if len(info) != 0:
             rsuId = info.split(':')[0]
@@ -104,18 +105,21 @@ if __name__ == "__main__":
             RSUs.append({'rsuId': rsuId, 'rsuLocation': rsuLocation, 'rsuCpu': rsuCpu, 'rsuMem': rsuMem, 'rsuWait': rsuWait})
     begin = net.getEdge(road).getToNode().getCoord()
     roads = []
-    with open('routesV/' + externalID + '.csv', 'r') as file:
+    if not os.path.exists('eta/' + externalID + '.csv'):
+        sys.exit(1)
+    with open('eta/' + externalID + '.csv', 'r') as file:
         while True:
             line = file.readline()
             if len(line) == 0:
                 break
-            roads.append(line.split(' ')[0].strip())
+            roads.append(line.split(',')[0].strip())
 
     # -----------generate deadline-----------
 
-    deadLinePosition = random.choice(roads[roads.index(road) + 3:]) # 把deadline加入到新的共享内存中 ** deadline最少与当前道路隔三条路，确保实际可以执行完成
-    deadLinePosition = '5931612'
-    print(deadLinePosition)
+    try:
+        deadLinePosition = random.choice(roads[roads.index(road) + 3:]) # 把deadline加入到新的共享内存中 ** deadline最少与当前道路隔三条路，确保实际可以执行完成
+    except:
+        sys.exit(1)
 
     # # for road in roads:
     # #     tmp = net.getEdge(road).getFromNode().getCoord()
@@ -223,7 +227,7 @@ if __name__ == "__main__":
 
     # -----------get possible RSU-----------
 
-    with open('node2RSUtest.json', 'r') as file:
+    with open('node2RSU.json', 'r') as file:
         node2RSU = json.loads(file.read().strip())
     usableRSUs = []
     # print(tmpRoads)

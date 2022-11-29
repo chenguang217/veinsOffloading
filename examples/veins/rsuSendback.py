@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # get routes
     routesId = []
-    with open('routesV/' + vehId + '.csv', 'r') as file:
+    with open('etc/' + vehId + '.csv', 'r') as file:
         while True:
             line = file.readline()
             if len(line) == 0:

@@ -72,7 +72,7 @@ protected:
     int startflag = 1;
     int startgenerate = 0;
     std::string lastroadID = "";
-    // PythonCommunication *pc;
+    PythonCommunication *pc;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

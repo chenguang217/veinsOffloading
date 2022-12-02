@@ -137,7 +137,7 @@ public:
 
         std::string title;
     };
-    // PythonCommunication *pc;
+    PythonCommunication *pc;
     ~AnnotationManager() override;
     void initialize() override;
     void finish() override;

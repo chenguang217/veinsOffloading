@@ -294,7 +294,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         std::string externalId = newTask->getExternalId();
         std::string possibleRSU = newTask->getPossibleRSUs();
 
-        pc->loadMoudle("rsuDecisionDynamicProgramCall");
+        pc->setModuleName("rsuDecisionDynamicProgramCall");
         PythonCommunication::PythonParam pp;
         pp.set("rsuInfo", toString(newTask->getPossibleRSUs()));
         pp.set("vehPos", toString(newTask->getSenderPos()));
@@ -349,11 +349,11 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuDecisionDynamicProgram.py " + trim(toString(newTask->getPossibleRSUs())) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + externalId + " " + newTask->getRoadId() + " " + toString(curPosition) + " " + toString(newTask->getName()) + " " + toString(simTime());
         // std::cout << "rsuInfo " << command << std::endl;
         // int result = system(command.c_str());
-        // std::string tmpMainDecision((char*)decision);
+        // std::string MainDecision((char*)decision);
         // std::string tmpMainRelay((char*)relay);
         // std::string tmpMainRoad((char*)serviceRoad);
         // std::string tmpDead((char*)deadRoad);
-        // std::vector<std::string> tmpMainDecisionVector = split(trim(tmpMainDecision), "|");
+        // std::vector<std::string> tmpMainDecisionVector = split(trim(MainDecision), "|");
         // std::vector<std::string> tmpMainRelayVector = split(trim(tmpMainRelay), "|");
         // std::vector<std::string> tmpMainRoadVector = split(trim(tmpMainRoad), "|");
 
@@ -372,7 +372,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
             taskSplit->setTarget("");
             std::vector<std::string> ratioResult = split(tmpMainDecisionVector[i], "*");
             if(ratioResult[0].length() == 0){
-                std::cout << "decision parse error " << taskName << " decision is " << tmpMainDecision << std::endl;
+                std::cout << "decision parse error " << taskName << " decision is " << MainDecision << std::endl;
                 break;
             }
             taskSplit->setDecision(ratioResult[0].c_str());
@@ -752,25 +752,36 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
                     }
                     else{
                         ifSend = 1;
-                        LPVOID backDecision;
-                        HANDLE hMapBackDecision = NULL;
-                        hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
-                        if (hMapBackDecision == NULL) {
-                            hMapBackDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (trim(toString(newTask->getName())) + "sendback").c_str());
-                        }
-                        backDecision = MapViewOfFile(hMapBackDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-                        //already scan vehicle, needs findout the service location
-                        std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuSendback.py " + itRoad->second + " " + newTask->getExternalId() + " " + trim(toString(newTask->getName())) + " " + toString(newTask->getDeadlinePos()) + " " + trim(toString(newTask->getService()));
-                        std::cout << "send back command " << command << std::endl;
-                        int result = system(command.c_str());
-                        std::string tmpSendback((char*)backDecision);
+                        // LPVOID backDecision;
+                        // HANDLE hMapBackDecision = NULL;
+                        // hMapBackDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (trim(toString(newTask->getName())) + "sendback").c_str());
+                        // if (hMapBackDecision == NULL) {
+                        //     hMapBackDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (trim(toString(newTask->getName())) + "sendback").c_str());
+                        // }
+                        // backDecision = MapViewOfFile(hMapBackDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                        // //already scan vehicle, needs findout the service location
+                        // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe rsuSendback.py " + itRoad->second + " " + newTask->getExternalId() + " " + trim(toString(newTask->getName())) + " " + toString(newTask->getDeadlinePos()) + " " + trim(toString(newTask->getService()));
+                        // std::cout << "send back command " << command << std::endl;
+                        // int result = system(command.c_str());
+                        // std::string tmpSendback((char*)backDecision);
+
+                        pc->setModuleName("rsuSendbackCall");
+                        PythonCommunication::PythonParam pp;
+                        pp.set("roadId", toString(itRoad->second));
+                        pp.set("vehId", toString(newTask->getExternalId()));
+                        pp.set("taskName", toString(newTask->getName()));
+                        pp.set("deadLinePos", toString(newTask->getDeadlinePos()));
+                        pp.set("serviceRoad", toString(newTask->getService()));
+                        PythonCommunication::PythonParam *ppr = pc->call("sendbackDes", &pp);
+                        std::string backDecision = ppr->getString("sendback");
+                        
                         std::cout << "task finish later than service road, need record task sendback length" << std::endl;
                         newTask->setSenderPos(curPosition);
                         double operationTime = newTask->getOperationTime();
                         double transmissionTime = newTask->getTransmissionTime();
                         double taskMem = newTask->getMem();
                         //set length and set sender type
-                        newTask->setService((char*)backDecision);
+                        newTask->setService(backDecision.c_str());
                         newTask->setSenderType(2);
                         sendDown(newTask->dup());
                     }

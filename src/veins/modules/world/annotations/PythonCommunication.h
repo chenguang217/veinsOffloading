@@ -13,13 +13,10 @@ private:
     PythonCommunication();
 
     const char *moduleName = nullptr;
-    PyObject *module = nullptr;
-    PyObject *pPythonParamModule = nullptr;
-    PyObject *PythonParamConstructor = nullptr;
-    std::map<const char *, PyObject *> functions;
+    static PythonCommunication *instance;
+    static bool printInfomation;
 
 public:
-    static PythonCommunication *instance;
     class PythonParam
     {
     private:
@@ -59,9 +56,12 @@ public:
     };
 
     ~PythonCommunication();
-    static PythonCommunication *getInstance();
+    PyObject *buildParam(PythonParam *pp);
+    static PythonCommunication *getInstance(const wchar_t *pythonHomePath = nullptr);
     static void release();
-    void loadMoudle(const char *moduleName);
+    static void setIfPrintInfomation(bool);
+    void setModuleName(const char *moduleName);
+    PyObject *getFunction(const char *funcName);
     PythonParam *call(const char *funcName, PythonParam *args);
 };
 

@@ -1,6 +1,7 @@
 #include "PythonCommunication.h"
 
 PythonCommunication *PythonCommunication::instance = nullptr;
+bool PythonCommunication::printInfomation = true;
 
 PythonCommunication::PythonCommunication()
 {
@@ -8,31 +9,19 @@ PythonCommunication::PythonCommunication()
 
 PythonCommunication::~PythonCommunication()
 {
-    if (module != nullptr)
-    {
-        Py_CLEAR(module);
-    }
-    if (pPythonParamModule != nullptr)
-    {
-        Py_CLEAR(pPythonParamModule);
-    }
-    if (PythonParamConstructor != nullptr)
-    {
-        Py_CLEAR(PythonParamConstructor);
-    }
-    for (auto it = functions.begin(); it != functions.end(); it++)
-    {
-        Py_CLEAR(it->second);
-        functions.erase(it);
-    }
     Py_Finalize();
 }
 
-PythonCommunication *PythonCommunication::getInstance()
+PythonCommunication *PythonCommunication::getInstance(const wchar_t *pythonHomePath)
 {
     if (instance == nullptr)
     {
+        if (pythonHomePath == nullptr)
+        {
+            std::cout << "first initialize python, please set the pythonHomePath" << std::endl;
+        }
         instance = new PythonCommunication();
+        Py_SetPythonHome(pythonHomePath);
         Py_Initialize();
         if (!Py_IsInitialized())
         {
@@ -40,98 +29,127 @@ PythonCommunication *PythonCommunication::getInstance()
         }
         PyRun_SimpleString("import sys");
         PyRun_SimpleString("sys.path.append('./')");
-        instance->pPythonParamModule = PyImport_ImportModule("PythonParam");
-        if (instance->pPythonParamModule == NULL)
-        {
-            std::cout << "can not find module <PythonParam>" << std::endl;
-            throw "can not find module <PythonParam>";
-        }
-        PyObject *pClass = PyObject_GetAttrString(instance->pPythonParamModule, "PythonParam");
-        if (pClass == NULL)
-        {
-            std::cout << "can not find class <PythonParam>" << std::endl;
-            throw "can not find class <PythonParam>";
-        }
-        instance->PythonParamConstructor = PyInstanceMethod_New(pClass);
-        if (instance->PythonParamConstructor == NULL) {
-            std::cout << "can not find constructor of <PythonParam>" << std::endl;
-            throw "can not find constructor of <PythonParam>";
-        }
     }
     return instance;
 }
 
 void PythonCommunication::release()
 {
-    if (instance != nullptr) {
+    if (instance != nullptr)
+    {
         Py_Finalize();
         instance = nullptr;
     }
 }
 
-void PythonCommunication::loadMoudle(const char *moduleName)
+void PythonCommunication::setIfPrintInfomation(bool printInfomation)
 {
-    std::cout << "LoadModule: " << moduleName << " is " << (module == nullptr ? "unload" : "loaded") << std::endl;
-    if (module != nullptr)
-    {
-        if (strcmp(moduleName, this->moduleName) == 0)
-            return;
-        Py_CLEAR(module);
-        for (auto it = functions.begin(); it != functions.end(); it++)
-        {
-            Py_CLEAR(it->second);
-            functions.erase(it);
-        }
-    }
-    module = PyImport_ImportModule(moduleName);
+    PythonCommunication::printInfomation = printInfomation;
+}
+
+void PythonCommunication::setModuleName(const char *moduleName)
+{
+    this->moduleName = moduleName;
+}
+
+PyObject *PythonCommunication::getFunction(const char *funcName)
+{
+    PyObject *module = PyImport_ImportModule(moduleName);
     if (module == NULL)
     {
-        throw "can not find module";
+        std::cout << "can not find module" << moduleName << std::endl;
+        return nullptr;
     }
-    this->moduleName = moduleName;
+    PyObject *func = PyObject_GetAttrString(module, funcName);
+    if (func == NULL)
+    {
+        std::cout << "can not find function " << funcName << std::endl;
+        return nullptr;
+    }
+    return func;
+}
+
+PyObject *PythonCommunication::buildParam(PythonParam *pp) {
+    PyObject *pPythonParamModule = PyImport_ImportModule("PythonParam");
+    if (pPythonParamModule == NULL)
+    {
+        std::cout << "can not find module <PythonParam>" << std::endl;
+        return nullptr;
+    }
+
+    PyObject *pClass = PyObject_GetAttrString(pPythonParamModule, "PythonParam");
+    Py_DECREF(pPythonParamModule);
+    if (pClass == NULL)
+    {
+        std::cout << "can not find class <PythonParam>" << std::endl;
+        return nullptr;
+    }
+
+    PyObject *constructor = PyInstanceMethod_New(pClass);
+    Py_DECREF(pClass);
+    if (constructor == NULL)
+    {
+        std::cout << "can not find constructor of <PythonParam>" << std::endl;
+        return nullptr;
+    }
+
+    PyObject *ppp = PyObject_CallObject(constructor, nullptr);
+    Py_DECREF(constructor);
+    if (ppp == nullptr)
+    {
+        PyErr_Print();
+        std::cout << "param constructor failed" << std::endl;
+        return nullptr;
+    }
+
+    if (pp != nullptr)
+    {
+        pp->buildPythonParam(ppp);
+        if (printInfomation)
+        {
+            std::cout << "param build" << std::endl;
+        }
+    }
+    return ppp;
 }
 
 PythonCommunication::PythonParam *PythonCommunication::call(const char *funcName, PythonParam *args)
 {
-    PyObject *pp = PyObject_CallObject(PythonParamConstructor, nullptr);
-    if (args != nullptr)
-    {
-        args->buildPythonParam(pp);
+    PyObject *pp = nullptr;
+    if ((pp = buildParam(args)) == nullptr) {
+        return nullptr;
     }
-    if (module == NULL)
+
+    PyObject *func = getFunction(funcName);
+    if (func == nullptr)
     {
-        throw "load module first";
-    }
-    // std::cout << "build param done" << std::endl;
-    auto function_it = functions.find(funcName);
-    PyObject *func = nullptr;
-    if (function_it == functions.end())
-    {
-        func = PyObject_GetAttrString(module, funcName);
-        if (func == NULL)
-        {
-            std::cout << "can not find function1 " << funcName << std::endl;
-            throw "can not find function";
-        }
-        functions[funcName] = func;
-    }
-    else
-    {
-        func = function_it->second;
-    }
-    if (func == NULL) {
         std::cout << "can not find function " << funcName << std::endl;
-        throw "can not find function";
+        return nullptr;
     }
+
     PyObject *pArgs = PyTuple_New(1);
     PyTuple_SetItem(pArgs, 0, pp);
+    if (printInfomation)
+    {
+        std::cout << "call " << funcName << std::endl;
+    }
+
     PyObject *pRes = PyObject_CallObject(func, pArgs);
+    Py_DECREF(pp);
+    Py_DECREF(func);
+    Py_DECREF(pArgs);
+
+    if (printInfomation)
+    {
+        std::cout << "call " << funcName << " finish" << std::endl;
+    }
+
     if (pRes == NULL)
         return nullptr;
+    
     PythonParam *result = new PythonParam(pRes);
-    Py_CLEAR(pArgs);
-    Py_CLEAR(pRes);
-    Py_CLEAR(pp);
+    Py_DECREF(pRes);
+
     return result;
 }
 
@@ -139,6 +157,7 @@ PythonCommunication::PythonParam::PythonParam()
 {
     if (PythonCommunication::instance == nullptr)
     {
+        std::cout << "Python not initialize" << std::endl;
         throw "Python not initialize";
     }
     param = PyDict_New();
@@ -146,13 +165,17 @@ PythonCommunication::PythonParam::PythonParam()
 
 PythonCommunication::PythonParam::PythonParam(PyObject *param)
 {
-    std::cout << PyBytes_AsString(PyUnicode_AsUTF8String(PyObject_Str(PyObject_GetAttrString(param, "param")))) << std::endl;
+    if (PythonCommunication::printInfomation)
+    {
+        std::cout << "param build--" << std::endl;
+        std::cout << PyBytes_AsString(PyUnicode_AsUTF8String(PyObject_Str(PyObject_GetAttrString(param, "param")))) << std::endl;
+    }
     this->param = PyDict_Copy(PyObject_GetAttrString(param, "param"));
 }
 
 PythonCommunication::PythonParam::~PythonParam()
 {
-    Py_CLEAR(param);
+    Py_DECREF(param);
 }
 
 void PythonCommunication::PythonParam::set(const char *name, int v)

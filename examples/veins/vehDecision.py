@@ -90,19 +90,17 @@ if __name__ == "__main__":
     net = sumolib.net.readNet('erlangen.net.xml')
     externalID = sys.argv[2]
     road = sys.argv[3]
-    rsuInfo = sys.argv[4]
-    position = sys.argv[5]
-    cpuRequirement = float(sys.argv[6])
-    rsuRaw = rsuInfo[:-1].split(';')
+    position = sys.argv[4]
+    cpuRequirement = float(sys.argv[5])
     # print(rsuInfo, rsuRaw)
-    for info in rsuRaw:
-        if len(info) != 0:
-            rsuId = info.split(':')[0]
-            rsuLocation = info.split(':')[1].split('*')[0]
-            rsuCpu = info.split(':')[1].split('*')[1]
-            rsuMem = info.split(':')[1].split('*')[2]
-            rsuWait = info.split(':')[1].split('*')[3]
-            RSUs.append({'rsuId': rsuId, 'rsuLocation': rsuLocation, 'rsuCpu': rsuCpu, 'rsuMem': rsuMem, 'rsuWait': rsuWait})
+    # for info in rsuRaw:
+    #     if len(info) != 0:
+    #         rsuId = info.split(':')[0]
+    #         rsuLocation = info.split(':')[1].split('*')[0]
+    #         rsuCpu = info.split(':')[1].split('*')[1]
+    #         rsuMem = info.split(':')[1].split('*')[2]
+    #         rsuWait = info.split(':')[1].split('*')[3]
+    #         RSUs.append({'rsuId': rsuId, 'rsuLocation': rsuLocation, 'rsuCpu': rsuCpu, 'rsuMem': rsuMem, 'rsuWait': rsuWait})
     begin = net.getEdge(road).getToNode().getCoord()
     roads = []
     if not os.path.exists('eta/' + externalID + '.csv'):

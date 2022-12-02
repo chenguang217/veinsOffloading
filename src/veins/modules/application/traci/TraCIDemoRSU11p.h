@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
+#include "veins/modules/world/annotations/PythonCommunication.h"
 
 namespace veins {
 
@@ -46,19 +47,25 @@ public:
     void initialize(int stage) override;
 protected:
     std::map<LAddress::L2Type, simtime_t> connectedNodes;
-    std::map<LAddress::L2Type, Coord> NodePositions;
+    // std::map<LAddress::L2Type, Coord> NodePositions;
     std::map<LAddress::L2Type, std::string> NodeRoad;
-    std::list<std::string>taskQueue1;
-    std::list<std::string>taskQueue2;
-    std::list<std::string>taskQueue3;
-    std::list<std::string>taskQueue4;
+    std::vector<std::vector<std::string>> taskQueue1;
+    std::vector<std::vector<std::string>> taskQueue2;
+    std::vector<std::vector<std::string>> taskQueue3;
+    std::vector<std::vector<std::string>> taskQueue4;
     simtime_t taskWait1 = 0;
     simtime_t taskWait2 = 0;
     simtime_t taskWait3 = 0;
     simtime_t taskWait4 = 0;
     double mem;
+    double mem1;
+    double mem2;
+    double mem3;
+    double mem4;
     double cpu = 0;
     double wait;
+    PythonCommunication *pc;
+
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;
@@ -66,6 +73,9 @@ protected:
     void onTask(Task* frame) override;
 
     void handleSelfMsg(cMessage* msg) override;
+    
+    void csv2variables();
+    void variables2csv();
 };
 
 } // namespace veins

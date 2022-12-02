@@ -40,3 +40,6 @@ endif
 ifeq ($(WITH_OSG), yes)
   OMNETPP_LIBS += $(OSG_LIBS)
 endif
+INCLUDE_PATH += -I D:/scoop/apps/python38/current/include
+LIB_DIR += D:/scoop/apps/python38/current
+LIBS += python38.dll

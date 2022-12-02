@@ -29,7 +29,7 @@ packet ReportMessage extends BaseFrame1609_4 {
     LAddress::L2Type senderAddress = -1;
     int senderType = 0;
     long cpu;
-    long mem;
+    string mem;
     simtime_t wait;
     string vehRoad;
 }

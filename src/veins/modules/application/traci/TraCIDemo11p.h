@@ -32,6 +32,7 @@
 #include <math.h>
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
+#include "veins/modules/world/annotations/PythonCommunication.h"
 
 namespace veins {
 
@@ -61,7 +62,7 @@ protected:
     std::map<LAddress::L2Type, simtime_t> connectedRSUs;
     std::map<LAddress::L2Type, Coord> RSUPositions;
     std::map<LAddress::L2Type, long>RSUcpus;
-    std::map<LAddress::L2Type, long>RSUmems;
+    std::map<LAddress::L2Type, std::string>RSUmems;
     std::map<LAddress::L2Type, simtime_t>RSUwaits;
     std::map<std::string, double>taskList;
     long mem;
@@ -71,6 +72,7 @@ protected:
     int startflag = 1;
     int startgenerate = 0;
     std::string lastroadID = "";
+    // PythonCommunication *pc;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

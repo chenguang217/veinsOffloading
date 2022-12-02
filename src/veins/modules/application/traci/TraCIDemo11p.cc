@@ -30,7 +30,7 @@ Define_Module(veins::TraCIDemo11p);
 double U_Random();
 int possion();
 int maxTask = 1;
-double generateP = 1 - 0.0;
+double generateP = 1 - 0.2;
 
 
 template<typename T> std::string toString(const T& t) {
@@ -49,6 +49,7 @@ std::string trim1(std::string s){
     return s;
 }
 
+
 void TraCIDemo11p::initialize(int stage)
 {
     DemoBaseApplLayer::initialize(stage);
@@ -57,6 +58,7 @@ void TraCIDemo11p::initialize(int stage)
         lastDroveAt = simTime();
         currentSubscribedServiceId = -1;
         srand( (unsigned)time( NULL ) );
+        pc = PythonCommunication::getInstance();
     }
 }
 
@@ -67,7 +69,7 @@ void TraCIDemo11p::onRM(ReportMessage* rm)
         LAddress::L2Type sender = rm->getSenderAddress();
         Coord pos = rm->getSenderPos();
         long rsuCpu = rm->getCpu();
-        long rsuMem = rm->getMem();
+        std::string rsuMem = rm->getMem();
         simtime_t rsuWait = rm->getWait();
         ReportMessage* newRM = new ReportMessage();
         populateWSM(newRM);
@@ -103,9 +105,6 @@ void TraCIDemo11p::onTask(Task* frame)
     if (newTask->getSenderType() == 1 && newTask->getSenderAddress() == myId) {
         taskList[trim1(toString(newTask->getName()))] = taskList[trim1(toString(newTask->getName()))] + newTask->getRatio();
         std::cout << "task finished" << std::endl;
-        // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + trim1(toString(newTask->getName())) + " 0 " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
-        // std::cout << "finished " << command << std::endl;
-        // int result = system(command.c_str());
         std::ofstream outfile;
         outfile.open("taskLog/" + trim1(toString(newTask->getName())) + "_" + toString(taskList[trim1(toString(newTask->getName()))]) + ".json");
         outfile << "{" << std::endl << "\t\"position\": \"" << toString(curPosition) << "\"," << std::endl;
@@ -126,7 +125,7 @@ void TraCIDemo11p::onTask(Task* frame)
             std::cout << iteMap->second << endl;
             if(iteMap->second >= 0.9999){
                 std::cout << "this finished" << endl;
-                taskList.erase(iteMap++);
+                taskList.erase(iteMap);
                 std::ofstream outfile;
                 outfile.open("taskLog/" + trim1(toString(newTask->getName())) + ".json");
                 outfile << "success" << std::endl;
@@ -137,10 +136,7 @@ void TraCIDemo11p::onTask(Task* frame)
     else if (newTask->getSenderType() == 2 && newTask->getSenderAddress() == myId) {
         taskList[trim1(toString(newTask->getName()))] = taskList[trim1(toString(newTask->getName()))] + newTask->getRatio();
         std::cout << "task finished" << std::endl;
-        // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehState.py " + toString(curPosition) + " " + toString(newTask->getDeadlinePos()) + " " + toString(newTask->getSenderPos()) + " " + toString(newTask->getCPU()) + " " + toString(newTask->getMem()) + " " + toString(newTask->getOperationTime()) + " " + newTask->getName() + " " + toString(newTask->getService()) + " " + toString(newTask->getRatio()) + " " + toString(taskList[trim1(toString(newTask->getName()))]);
-        // std::cout << "finished " << command << std::endl;
-        // int result = system(command.c_str());
-                std::ofstream outfile;
+        std::ofstream outfile;
         outfile.open("taskLog/" + trim1(toString(newTask->getName())) + "_" + toString(taskList[trim1(toString(newTask->getName()))]) + ".json");
         outfile << "{" << std::endl << "\t\"position\": \"" << toString(curPosition) << "\"," << std::endl;
         outfile << "\t\"deadLinePos\": \"" << toString(newTask->getDeadlinePos()) << "\"," << std::endl;
@@ -160,7 +156,7 @@ void TraCIDemo11p::onTask(Task* frame)
             std::cout << iteMap->second << endl;
             if(iteMap->second >= 0.9999){
                 std::cout << "this finished" << endl;
-                taskList.erase(iteMap++);
+                taskList.erase(iteMap);
                 std::ofstream outfile;
                 outfile.open("taskLog/" + trim1(toString(newTask->getName())) + ".json");
                 outfile << "success" << std::endl;
@@ -204,16 +200,26 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 
 void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 {
+    // pc->loadMoudle("test1");
+    // PythonCommunication::PythonParam pp;
+    // pp.set("add1", 3);
+    // pp.set("add2", 5);
+    // PythonCommunication::PythonParam *ppr = pc->call("sumTest", &pp);
+    // int result1 = ppr->getInt("sumResult");
+    // std::cout << "python call " << result1 << std::endl;
+
+    
     std::map<LAddress::L2Type, simtime_t>::iterator it;
     std::map<LAddress::L2Type, Coord>::iterator itCoord=RSUPositions.begin();
     std::map<LAddress::L2Type, long>::iterator itCpu=RSUcpus.begin();
-    std::map<LAddress::L2Type, long>::iterator itMem=RSUmems.begin();
+    std::map<LAddress::L2Type, std::string>::iterator itMem=RSUmems.begin();
     std::map<LAddress::L2Type, simtime_t>::iterator itWait=RSUwaits.begin();
     std::string roadIdTmp = mobility->getRoadId();
     std::string externalId = mobility->getExternalId();
-    // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe posRecord.py " + externalId + " " + roadIdTmp + " " + toString(simTime());
-    // // int result = system(command.c_str());
-    for(it = connectedRSUs.begin(); it != connectedRSUs.end(); it++) {
+    // std::ofstream outfile;
+    // outfile.open("simTime/" + externalId + ".log", std::ios::app);
+    // outfile << roadIdTmp << "," << toString(simTime()) << std::endl;
+    for(it = connectedRSUs.begin(), itCoord = RSUPositions.begin(), itCpu = RSUcpus.begin(), itMem = RSUmems.begin(), itWait = RSUwaits.begin(); it != connectedRSUs.end() && itCoord != RSUPositions.end() && itCpu != RSUcpus.end() && itMem != RSUmems.end() && itWait != RSUwaits.end(); it++, itCoord++, itCpu++, itMem++, itWait++) {
         if (simTime() - it->second >= 10) {
             // std::cout << "RSU " << it->first << " at " << itCoord->first << " didn't response in " << simTime() - it->second << " seconds" << std::endl;
             connectedRSUs.erase(it++);
@@ -225,10 +231,10 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 break;
             }
         }
-        itCoord++;
-        itCpu++;
-        itMem++;
-        itWait++;
+        // itCoord++;
+        // itCpu++;
+        // itMem++;
+        // itWait++;
     }
     // std::cout << "position x " << curPosition.x << " if equal " << std::endl;
     if (lastroadID == ""){
@@ -251,7 +257,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
         if (lastroadID.at(0) != ':'){
             std::cout << myId << " is at " << lastroadID << std::endl;
             // random generate tasks
-            if ((U_Random() > generateP || startflag == 1) && ifSend < maxTask){
+            if ((U_Random() > generateP || startflag == 1) && ifSend < maxTask && RSUPositions.size() > 0){
                 // generate Task Message
                 std::string externalId = mobility->getExternalId();
                 std::string roadId = mobility->getRoadId();
@@ -276,23 +282,11 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                     itRoad++;
                 }
                 task->setRoads(roads.c_str());
-                // int deadIndex = int(U_Random() * (roadList.size() - presentIndex) + presentIndex);
-                // itRoad = roadList.begin();
-                // for(int i = 0; i < deadIndex; i++){
-                //     itRoad++;
-                // }
-                // std::string deadRoad = *itRoad;
-                // task->setDeadline(deadRoad.c_str());
 
-                // get proxy RSU and find available RSU list
-                std::map<LAddress::L2Type, Coord>::iterator it;
-                std::map<LAddress::L2Type, long>::iterator itCpu = RSUcpus.begin();
-                std::map<LAddress::L2Type, long>::iterator itMem = RSUmems.begin();
-                std::map<LAddress::L2Type, simtime_t>::iterator itWait = RSUwaits.begin();
+                std::map<LAddress::L2Type, Coord>::iterator it = RSUPositions.begin();
+                task->setTarget(toString(it->second).c_str());
                 double minDist = 1000;
-                std::string RSUinfo = "";
                 for(it = RSUPositions.begin(); it != RSUPositions.end(); it++) {
-                    RSUinfo = RSUinfo + toString(itCpu->first) + ":" + toString(it->second) + "*" + toString(itCpu->second) + "*" + toString(itMem->second) + "*" + toString(itWait->second) + ";";
                     double tmpDist = it->second.distance(curPosition);
                     // std::cout << it->second << std::endl;
                     if(tmpDist <= minDist){
@@ -300,58 +294,77 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                         // std::cout << minDist << std::endl;
                         task->setTarget(toString(it->second).c_str());
                     }
-                    itCpu++;
-                    itMem++;
-                    itWait++;
                 }
-                LPVOID pBuffer;
-                HANDLE hMap = NULL;
-                hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "global_share_memory").c_str());
-                if (hMap == NULL) {
-                    hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "global_share_memory").c_str());
-                }
-                pBuffer = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                // LPVOID pBuffer;
+                // HANDLE hMap = NULL;
+                // hMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "global_share_memory").c_str());
+                // if (hMap == NULL) {
+                //     hMap = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "global_share_memory").c_str());
+                // }
+                // pBuffer = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-                LPVOID pBufferDecision;
-                HANDLE hMapDecision = NULL;
-                hMapDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "possibleRSU").c_str());
-                if (hMapDecision == NULL) {
-                    hMapDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "possibleRSU").c_str());
-                }
-                pBufferDecision = MapViewOfFile(hMapDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                // LPVOID pBufferDecision;
+                // HANDLE hMapDecision = NULL;
+                // hMapDecision = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "possibleRSU").c_str());
+                // if (hMapDecision == NULL) {
+                //     hMapDecision = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "possibleRSU").c_str());
+                // }
+                // pBufferDecision = MapViewOfFile(hMapDecision, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-                LPVOID pBufferDeadlineX;
-                HANDLE hMapDeadlineX = NULL;
-                hMapDeadlineX = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "deadLinePosX").c_str());
-                if (hMapDeadlineX == NULL) {
-                    hMapDeadlineX = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "deadLinePosX").c_str());
-                }
-                pBufferDeadlineX = MapViewOfFile(hMapDeadlineX, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                // LPVOID pBufferDeadlineX;
+                // HANDLE hMapDeadlineX = NULL;
+                // hMapDeadlineX = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "deadLinePosX").c_str());
+                // if (hMapDeadlineX == NULL) {
+                //     hMapDeadlineX = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "deadLinePosX").c_str());
+                // }
+                // pBufferDeadlineX = MapViewOfFile(hMapDeadlineX, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-                LPVOID pBufferDeadlineY;
-                HANDLE hMapDeadlineY = NULL;
-                hMapDeadlineY = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "deadLinePosY").c_str());
-                if (hMapDeadlineY == NULL) {
-                    hMapDeadlineY = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "deadLinePosY").c_str());
-                }
-                pBufferDeadlineY = MapViewOfFile(hMapDeadlineY, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+                // LPVOID pBufferDeadlineY;
+                // HANDLE hMapDeadlineY = NULL;
+                // hMapDeadlineY = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, (externalId + "deadLinePosY").c_str());
+                // if (hMapDeadlineY == NULL) {
+                //     hMapDeadlineY = CreateFileMapping(NULL, NULL, PAGE_READWRITE, 0, 0X1000, (externalId + "deadLinePosY").c_str());
+                // }
+                // pBufferDeadlineY = MapViewOfFile(hMapDeadlineY, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
-                std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehDecision.py 123 " + externalId + " " + roadId + " " + RSUinfo + " " + toString(curPosition) + " " + toString(task->getCPU());
-                std::cout << "command " << command << std::endl;
-                int result = system(command.c_str());
-                if ((char*)pBufferDeadlineX != NULL && result == 0){
-                    task->setDeadlinePos(Coord(strtod((char*)pBufferDeadlineX, NULL), strtod((char*)pBufferDeadlineY, NULL), 0));
-                    ifSend++;
+                // std::string command = "D:\\scoop\\apps\\python38\\current\\python.exe vehDecision.py 123 " + externalId + " " + roadId + " " + toString(curPosition) + " " + toString(task->getCPU());
+                // std::cout << "command " << command << std::endl;
+                // int result = system(command.c_str());
+                // if ((char*)pBufferDeadlineX != NULL && result == 0){
+                //     task->setDeadlinePos(Coord(strtod((char*)pBufferDeadlineX, NULL), strtod((char*)pBufferDeadlineY, NULL), 0));
+                //     task->setName((char*)pBuffer);
+                //     task->setPossibleRSUs((char*)pBufferDecision);
+                //     scheduleAt(simTime(), task->dup());
+                //     ifSend++;
+                // }
+                // if (result == 0 && startflag == 1){
+                //     startflag = 0;
+                // }
+
+                pc->loadMoudle("vehDecisionCall");
+                PythonCommunication::PythonParam pp;
+                pp.set("externalID", externalId);
+                pp.set("road", roadId);
+                pp.set("position", toString(curPosition));
+                pp.set("cpuRequirement", task->getMem() * 0.000008 * 1024);
+                PythonCommunication::PythonParam *ppr = pc->call("vehDecision", &pp);
+                std::string name = ppr->getString("name");
+                ifSend++;
+                if (name == "1"){
+                    std::cout << "deadline selection error or eta not exist" << std::endl;
                 }
-                if (result == 0 && startflag == 1){
+                else {
+                    double deadLinePosX = ppr->getDouble("deadLinePosX");
+                    double deadLinePosY = ppr->getDouble("deadLinePosY");
+                    std::string possibleRSU = ppr->getString("possibleRSU");
+                    task->setDeadlinePos(Coord(deadLinePosX, deadLinePosY, 0));
+                    task->setName(name.c_str());
+                    task->setPossibleRSUs(possibleRSU.c_str());
+                    scheduleAt(simTime() + uniform(0.01, 0.2), task->dup());
+                }
+                if (startflag == 1){
                     startflag = 0;
                 }
-                // std::tuple<std::string, double, uint8_t> tmp = traci->getRoadMapPos(task->getDeadlinePos());
-                // std::cout << "deadline road " << std::get<0>(tmp) << " " << task->getDeadlinePos() << std::endl;
-                // std::cout << ifSend << std::endl;
-                task->setName((char*)pBuffer);
-                task->setPossibleRSUs((char*)pBufferDecision);
-                scheduleAt(simTime() + uniform(0.01, 0.2), task->dup());
             }
         }
     }

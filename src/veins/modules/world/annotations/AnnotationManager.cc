@@ -52,11 +52,19 @@ void AnnotationManager::initialize()
 
     annotationsXml = par("annotations");
     addFromXml(annotationsXml);
+    pc = PythonCommunication::getInstance();
+    if (pc) {
+        std::cout << "PythonCommunication initialize successfully." << endl;
+    } else {
+        std::cout << "PythonCommunication initialize failed." << endl;
+    }
 }
 
 void AnnotationManager::finish()
 {
     hideAll();
+    std::cout << "PythonCommunication release." << endl;
+    PythonCommunication::release();
 }
 
 AnnotationManager::~AnnotationManager()

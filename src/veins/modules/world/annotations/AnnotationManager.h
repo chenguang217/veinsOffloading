@@ -30,6 +30,7 @@
 
 #include "veins/base/utils/FindModule.h"
 #include "veins/base/utils/Coord.h"
+#include "veins/modules/world/annotations/PythonCommunication.h"
 
 namespace veins {
 
@@ -136,7 +137,7 @@ public:
 
         std::string title;
     };
-
+    // PythonCommunication *pc;
     ~AnnotationManager() override;
     void initialize() override;
     void finish() override;

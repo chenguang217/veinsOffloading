@@ -28,17 +28,16 @@ if __name__ == "__main__":
 
     # get routes
     routesId = []
-    with open('etc/' + vehId + '.csv', 'r') as file:
+    with open('eta/' + vehId + '.csv', 'r') as file:
         while True:
-            line = file.readline()
+            line = file.readline().strip()
             if len(line) == 0:
                 break
-            tmpNode = net.getEdge(line.split(' ')[0]).getFromNode().getCoord()
+            tmpNode = net.getEdge(line.split(',')[0]).getFromNode().getCoord()
             tmpNode = [tmpNode[0] - boundaries[0], boundaries[3] - tmpNode[1]]
             if tmpNode[0] - deadLinePos[0] < 0.05 and tmpNode[1] - deadLinePos[1] < 0.05:
                 deadLineIndex = len(routesId) - 1
-            routesId.append(line.split(' ')[0])
-    # print(routesId)
+            routesId.append(line.split(',')[0])
     # print(routesId.index(roadId), routesId[deadLineIndex])
     if routesId.index(roadId) < routesId.index(serviceRoad):
         # print('not in service road')

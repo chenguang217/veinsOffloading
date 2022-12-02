@@ -276,17 +276,20 @@ void TraCIMobility::changePosition(std::string objectId, std::string road_id)
     move.setDirectionByVector(heading.toCoord());
     move.setOrientationByVector(heading.toCoord());
     //EV_DEBUG << "new ADD setHostSpeed" << this->setHostSpeed << endl;
-
+    
+    float tmpSpeed;
     if (roads_it != roads.end() && road_id == *roads_it) {
-        float tmpSpeed = *(++speeds_it);
+        tmpSpeed = *(++speeds_it);
         std::cout << "road changed, speed is " << tmpSpeed << std::endl;
         getVehicleCommandInterface()->setSpeed(tmpSpeed);
         ++roads_it;
     }
     else{
-        float tmpSpeed = *(speeds_it);
+        tmpSpeed = *(speeds_it);
         getVehicleCommandInterface()->setSpeed(tmpSpeed);
     }
+    // move.setSpeed(tmpSpeed);
+    // std::cout << "speed is " << getVehicleCommandInterface()->getSpeed() << " tmpSpeed " << tmpSpeed << std::endl;
 
     // std::ifstream infile("routesV\\" + objectId + ".csv");
     // std::string line;

@@ -89,32 +89,52 @@ void TraCIDemoRSU11p::csv2variables(){
             if(token != "*"){
                 tmpQueue = split(token, ";");
                 for(int i = 0; i < tmpQueue.size(); i++){
-                    std::vector<std::string> nameState = split(tmpQueue[i].substr(0, tmpQueue[i].length() - 1), "(");
-                    taskQueue1.push_back(nameState);
+                    std::vector<std::string> nameState = split(tmpQueue[i], "(");
+                    if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
+                        std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                    }
+                    else{
+                        taskQueue1.push_back(nameState);
+                    }
                 }
             }
             ss >> token;
             if(token != "*"){
                 tmpQueue = split(token, ";");
                 for(int i = 0; i < tmpQueue.size(); i++){
-                    std::vector<std::string> nameState = split(tmpQueue[i].substr(0, tmpQueue[i].length() - 1), "(");
-                    taskQueue2.push_back(nameState);
+                    std::vector<std::string> nameState = split(tmpQueue[i], "(");
+                    if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
+                        std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                    }
+                    else{
+                        taskQueue2.push_back(nameState);
+                    }
                 }
             }
             ss >> token;
             if(token != "*"){
                 tmpQueue = split(token, ";");
                 for(int i = 0; i < tmpQueue.size(); i++){
-                    std::vector<std::string> nameState = split(tmpQueue[i].substr(0, tmpQueue[i].length() - 1), "(");
-                    taskQueue3.push_back(nameState);
+                    std::vector<std::string> nameState = split(tmpQueue[i], "(");
+                    if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
+                        std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                    }
+                    else{
+                        taskQueue3.push_back(nameState);
+                    }
                 }
             }
             ss >> token;
             if(token != "*"){
                 tmpQueue = split(token, ";");
                 for(int i = 0; i < tmpQueue.size(); i++){
-                    std::vector<std::string> nameState = split(tmpQueue[i].substr(0, tmpQueue[i].length() - 1), "(");
-                    taskQueue4.push_back(nameState);
+                    std::vector<std::string> nameState = split(tmpQueue[i], "(");
+                    if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
+                        std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                    }
+                    else{
+                        taskQueue4.push_back(nameState);
+                    }
                 }
             }
             ss >> token;
@@ -183,28 +203,28 @@ void TraCIDemoRSU11p::variables2csv(){
                 strFileData += "*";
             }
             for(int i = 0; i < taskQueue1.size(); i++){
-                strFileData += taskQueue1[i][0] + "(" + taskQueue1[i][1] + ");";
+                strFileData += taskQueue1[i][0] + "(" + taskQueue1[i][1] + "(" + taskQueue1[i][2] + ";";
             }
             strFileData += " ";
             if(taskQueue2.size() == 0){
                 strFileData += "*";
             }
             for(int i = 0; i < taskQueue2.size(); i++){
-                strFileData += taskQueue2[i][0] + "(" + taskQueue2[i][1] + ");";
+                strFileData += taskQueue2[i][0] + "(" + taskQueue2[i][1] + "(" + taskQueue2[i][2] + ";";
             }
             strFileData += " ";
             if(taskQueue3.size() == 0){
                 strFileData += "*";
             }
             for(int i = 0; i < taskQueue3.size(); i++){
-                strFileData += taskQueue3[i][0] + "(" + taskQueue3[i][1] + ");";
+                strFileData += taskQueue3[i][0] + "(" + taskQueue3[i][1] + "(" + taskQueue3[i][2] + ";";
             }
             strFileData += " ";
             if(taskQueue4.size() == 0){
                 strFileData += "*";
             }
             for(int i = 0; i < taskQueue4.size(); i++){
-                strFileData += taskQueue4[i][0] + "(" + taskQueue4[i][1] + ");";
+                strFileData += taskQueue4[i][0] + "(" + taskQueue4[i][1] + "(" + taskQueue4[i][2] + ";";
             }
             strFileData += " " + toString(cpu) + " " + toString(mem1) + " " + toString(mem2) + " " + toString(mem3) + " " + toString(mem4) + " " + toString(taskWait1) + " " + toString(taskWait2) + " " + toString(taskWait3) + " " + toString(taskWait4);
             // std::cout << strFileData << std::endl;
@@ -307,10 +327,23 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         pp.set("taskName", toString(newTask->getName()));
         pp.set("simTime", simTime().dbl());
         PythonCommunication::PythonParam *ppr = pc->call("rsuDecision", &pp);
-        std::string tmpDead = ppr->getString("dead");
-        std::string MainDecision = ppr->getString("decision");
-        std::string MainRelay = ppr->getString("relay");
-        std::string MainRoad = ppr->getString("service");
+        std::string tmpDead;
+        std::string MainDecision;
+        std::string MainRelay;
+        std::string MainRoad;
+        if(ppr == nullptr){
+            std::cout << "python call error" << std::endl;
+            tmpDead = "";
+            MainDecision = "";
+            MainRelay = "";
+            MainRoad = "";
+        }
+        else{
+            tmpDead = ppr->getString("dead");
+            MainDecision = ppr->getString("decision");
+            MainRelay = ppr->getString("relay");
+            MainRoad = ppr->getString("service");
+        }
         std::vector<std::string> tmpMainDecisionVector = split(trim(MainDecision), "|");
         std::vector<std::string> tmpMainRelayVector = split(trim(MainRelay), "|");
         std::vector<std::string> tmpMainRoadVector = split(trim(MainRoad), "|");
@@ -560,7 +593,7 @@ void TraCIDemoRSU11p::onTask(Task* frame)
                 std::string tmpRelay = trim(toString(result[i]));
                 if(tmpRelay == toString(curPosition)){
                     //relay node
-                    double relayTime = newTask->getMem() * 8 / 1024 / maxRate;
+                    double relayTime = newTask->getMem() * newTask->getRatio() * 8 / 1024 / maxRate;
                     //change relay decision
                     std::string newRelay = trim(toString(newTask->getRelay()));
                     int tmpPos = newRelay.find(toString(curPosition) + ";");
@@ -637,12 +670,15 @@ void TraCIDemoRSU11p::handleSelfMsg(cMessage* msg)
         for(int i = 0; i < taskQueue1.size(); i++){
             outfile << taskQueue1[i][0] << "(" << taskQueue1[i][1] << ")" << ",";
         }
+        outfile << "|";
         for(int i = 0; i < taskQueue2.size(); i++){
             outfile << taskQueue2[i][0] << "(" << taskQueue2[i][1] << ")" << ",";
         }
+        outfile << "|";
         for(int i = 0; i < taskQueue3.size(); i++){
             outfile << taskQueue3[i][0] << "(" << taskQueue3[i][1] << ")" << ",";
         }
+        outfile << "|";
         for(int i = 0; i < taskQueue4.size(); i++){
             outfile << taskQueue4[i][0] << "(" << taskQueue4[i][1] << ")" << ",";
         }

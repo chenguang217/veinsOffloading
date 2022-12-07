@@ -248,7 +248,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     if (mobility->getRoadId() != lastroadID || startflag == 1){
         lastroadID = mobility->getRoadId();
         if (lastroadID.at(0) != ':'){
-            std::cout << myId << " is at " << lastroadID << std::endl;
+            std::cout << mobility->getExternalId() << " is at " << lastroadID << std::endl;
             // random generate tasks
             if ((U_Random() > generateP || startflag == 1) && ifSend < maxTask && RSUPositions.size() > 0){
                 // generate Task Message
@@ -341,7 +341,14 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
                 pp.set("position", toString(curPosition));
                 pp.set("cpuRequirement", task->getMem() * 0.000008 * 1024);
                 PythonCommunication::PythonParam *ppr = pc->call("vehDecision", &pp);
-                std::string name = ppr->getString("name");
+                std::string name;
+                if(ppr == nullptr){
+                    std::cout << "python call error" << std::endl;
+                    name = "1";
+                }
+                else{
+                    name = ppr->getString("name");
+                }
                 ifSend++;
                 if (name == "1"){
                     std::cout << "deadline selection error or eta not exist" << std::endl;

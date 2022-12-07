@@ -132,7 +132,7 @@ def calProfit(ratio, rsuIndex, allocateRatio, currentState, cpu, mem, rsuList, b
     relays = relay(proxyPos, rsuPos)
     relayTime = 0
     for i in range(len(relays) - 1):
-        relayTime += mem * 8 / 1000 / maxRate
+        relayTime += mem * tmpState[list(rsuList.keys())[rsuIndex]][0] * 8 / 1024 / maxRate
     tmpEtaFinal = []
     tmpEtaRoad = []
     for eta in range(len(etaFinal)):
@@ -270,7 +270,7 @@ def rsuDecision(param: PythonParam):
     result = []
     distance = calDistance(proxyPos, vehPos)
     transRate = min(5 * math.log2(1 + 2500 / distance), maxRate)
-    transTime = mem * 8 / 1000 / transRate
+    transTime = mem * 8 / 1024 / transRate
     # ----------------decision process----------------
     # -----here is a dynamic programing algorithm-----
     # -----step is 0.1, so ratio is mutiply by 10-----
@@ -354,16 +354,17 @@ def rsuDecision(param: PythonParam):
         for tmp in tmpLines:
             if tmp[0] == k.split(';')[0]:
                 core = int(k.split(';')[1])
-                if tmp[core] == '*':
-                    tmp[core] = taskName + '(0);'
-                else:
-                    tmp[core] += taskName + '(0);'
-                tmp[core + 5] = str(float(tmp[core + 5]) - round(mem * round(v, 2), 2))
-                tmpRelayTime = len(tmpRelay[1:]) * mem * round(v, 2) * 8 / 1000 / maxRate
+                tmpRelayTime = len(tmpRelay[1:]) * mem * round(v, 2) * 8 / 1024 / maxRate
                 tmpOperationTime = cpu * round(v, 2) / rsuList[k]['cpu']
+                if tmp[core] == '*':
+                    tmp[core] = taskName + '(0(' + str(int(transTime + tmpRelayTime + simTime + 7)) + ';'
+                else:
+                    tmp[core] += taskName + '(0(' + str(int(transTime + tmpRelayTime + simTime + 7)) + ';'
+                tmp[core + 5] = str(float(tmp[core + 5]) - round(mem * round(v, 2), 2))
                 tmp[core + 9] = str(rsuList[k]['wait'] + transTime + tmpRelayTime + tmpOperationTime + simTime)
                 if core == 4:
                     tmp[core + 9] += '\n'
+                break
         resultRelay += tmpResultRelay + '|'
         serviceRoad += res[-1][-1][2][k][1] + '|'
     with open('rsus.csv', 'w') as file:

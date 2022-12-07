@@ -172,8 +172,8 @@ def vehDecision(param: PythonParam):
     possibleRSU = ''
     for rsu in usableRSUs:
         possibleRSU +='(' + str(rsu[0]) + ',' + str(rsu[1]) + ',3);'
-    send(externalID + ''.join(random.sample('zyxwvutsrqponmlkjihgfedcba',5)), externalID + 'global_share_memory')
-    send(possibleRSU, externalID + 'possibleRSU')
+    # send(externalID + ''.join(random.sample('zyxwvutsrqponmlkjihgfedcba',5)), externalID + 'global_share_memory')
+    # send(possibleRSU, externalID + 'possibleRSU')
     res.set("deadLinePosX", deadPosition[0])
     res.set("deadLinePosY", deadPosition[1])
     res.set("possibleRSU", str(possibleRSU))

@@ -10,10 +10,12 @@ from turtle import pos
 
 import numpy as np
 import sumolib
+from PythonParam import PythonParam
 
 size = (2600, 3000)
 maxRate = 60
-maxTime = 200
+maxTime = 2000
+alpha = 0.5
 
 def send(s, file_name):
     s=s+100*' '
@@ -35,17 +37,6 @@ def recieve(file_name):
         print(sn)
 
 def relay(position, target):
-    # relay0 = []
-    # for i in range(round(size[0] / 1000)):
-    #     for j in range(round(size[1] / 1000)):
-    #         distance = math.sqrt((position[0] - i * 1000 - 500) ** 2 + (position[1] - j * 1000 - 500) ** 2)
-    #         if distance <= 1000:
-    #             relay0.append([i * 1000 + 500, j * 1000 + 500])
-    # minJump = 16000
-    # for point in relay0:
-    #     if abs(target[0] - point[0] + target[1] - point[1]) < minJump:
-    #         minJump = abs(target[0] - point[0] + target[1] - point[1])
-    #         relayStart = point
     relayStart = position
     xlength = relayStart[0] - target[0]
     ylength = relayStart[1] - target[1]
@@ -84,11 +75,6 @@ def calServiceRate(target, rsuPos):
 
 def getRoadLength(roadId, net, boundaries):
     road = net.getEdge(roadId)
-    # length = road.getLength()
-    # fromNode = road.getFromNode().getCoord()
-    # toNode = road.getToNode().getCoord()
-    # fromNode = [fromNode[0] - boundaries[0], boundaries[3] - fromNode[1]]
-    # toNode = [toNode[0] - boundaries[0], boundaries[3] - toNode[1]]
     shapeNodes = []
     for node in road.getShape():
         shapeNodes.append([node[0] - boundaries[0], boundaries[3] - node[1]])
@@ -103,49 +89,71 @@ def calIntegralServiceRate(shapeNodes, rsuPos):
     servicePoint = [xSum / len(shapeNodes), ySum / len(shapeNodes)]
     return calServiceRate(servicePoint, rsuPos)
 
-if __name__ == "__main__":
-    rsuInfo = sys.argv[1][:-1].split(';')
-    vehPos = sys.argv[2].replace('(', '').replace(')', '')
+def CalMetric(serviceRate, waits, waitMax):
+
+    if waitMax == 0:
+        # means no ratio task allocate
+        # print(serviceRate, 0)
+        return alpha * serviceRate
+    else:
+        # print(serviceRate, calVariance(waits), calVariance(waitMax))
+        # print(serviceRate, (calVariance(waits) / 100))
+        return alpha * serviceRate + (1 - alpha) * (1 - calVariance(waits) / waitMax)
+        # return alpha * serviceRate + (1 - alpha) * (1 - calVariance(waits) / 100)
+        # return 0.5 * serviceRate
+
+def rsuDecision(param: PythonParam):
+    rsuInfo = param.getString("rsuInfo")[:-1].split(';')
+    vehPos = param.getString("vehPos").replace('(', '').replace(')', '')
     vehPos = [float(vehPos.split(',')[0]), float(vehPos.split(',')[1])]
-    deadLinePos = sys.argv[3].replace('(', '').replace(')', '')
+    deadLinePos = param.getString("deadLinePos").replace('(', '').replace(')', '')
     deadLinePos = [float(deadLinePos.split(',')[0]), float(deadLinePos.split(',')[1])]
-    cpu = float(sys.argv[4])
-    mem = float(sys.argv[5])
-    externalId = sys.argv[6]
-    roadId = sys.argv[7]
-    proxyPos = sys.argv[8].replace('(', '').replace(')', '')
+
+    cpu = param.getDouble("cpu")
+    mem = param.getDouble("mem")
+    externalId = param.getString("externalId")
+    roadId = param.getString("roadId")
+    proxyPos = param.getString("proxyPos").replace('(', '').replace(')', '')
     proxyPos = [float(proxyPos.split(',')[0]), float(proxyPos.split(',')[1])]
+    taskName = param.getString("taskName")
+    simTime = param.getDouble("simTime")
+    rparam = PythonParam()
     net = sumolib.net.readNet('erlangen.net.xml')
     boundaries = net.getBoundary()
 
     # -----------rsuInfo parse-----------
 
     rsuList = {}
-    for rsu in rsuInfo:
-        if float(rsu.split(':')[1].split('*')[2]) < maxTime:
-            rsuList[rsu.split(':')[0] + ';1'] = {
-                'cpu': float(rsu.split(':')[1].split('*')[0]), 
-                'mem': float(rsu.split(':')[1].split('*')[1]), 
-                'wait': float(rsu.split(':')[1].split('*')[2]), 
-            }
-        if float(rsu.split(':')[1].split('*')[3]) < maxTime:
-            rsuList[rsu.split(':')[0] + ';2'] = {
-                'cpu': float(rsu.split(':')[1].split('*')[0]), 
-                'mem': float(rsu.split(':')[1].split('*')[1]), 
-                'wait': float(rsu.split(':')[1].split('*')[3]), 
-            }
-        if float(rsu.split(':')[1].split('*')[4]) < maxTime:
-            rsuList[rsu.split(':')[0] + ';3'] = {
-                'cpu': float(rsu.split(':')[1].split('*')[0]), 
-                'mem': float(rsu.split(':')[1].split('*')[1]), 
-                'wait': float(rsu.split(':')[1].split('*')[4]), 
-            }
-        if float(rsu.split(':')[1].split('*')[5]) < maxTime:
-            rsuList[rsu.split(':')[0] + ';4'] = {
-                'cpu': float(rsu.split(':')[1].split('*')[0]), 
-                'mem': float(rsu.split(':')[1].split('*')[1]), 
-                'wait': float(rsu.split(':')[1].split('*')[5]), 
-            }
+    rsuWaits = {}
+    with open('rsus.csv', 'r') as file:
+        while True:
+            line = file.readline()
+            if len(line) == 0:
+                break
+            line = line.strip().split(' ')
+            if line[0] in rsuInfo:
+                rsuList[line[0] + ';1'] = {
+                    'cpu': float(line[5]), 
+                    'mem': float(line[6]), 
+                    'wait': max(0, float(line[10]) - simTime), 
+                }
+                rsuList[line[0] + ';2'] = {
+                    'cpu': float(line[5]), 
+                    'mem': float(line[7]), 
+                    'wait': max(0, float(line[11]) - simTime), 
+                }
+                rsuList[line[0] + ';3'] = {
+                    'cpu': float(line[5]), 
+                    'mem': float(line[8]), 
+                    'wait': max(0, float(line[12]) - simTime), 
+                }
+                rsuList[line[0] + ';4'] = {
+                    'cpu': float(line[5]), 
+                    'mem': float(line[9]), 
+                    'wait': max(0, float(line[13]) - simTime), 
+                }
+            for i in range(10, len(line)):
+                rsuWaits[line[0] + ';' + str(i - 9)] = (float(line[i]))
 
     # -----------eta calculation-----------
     etaRoad = []
@@ -171,6 +179,7 @@ if __name__ == "__main__":
         elif abs(tmpNode[0] - deadLinePos[0]) < 0.05 and abs(tmpNode[1] - deadLinePos[1]) < 0.05:
             etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
             etaRoad.append([etaRaw[i][0], float(etaRaw[i][1]) - etaStart])
+            rparam.set("dead", etaRaw[i][0])
             break
         elif flag:
             etaFinal.append([tmpNode, float(etaRaw[i][1]) - etaStart])
@@ -182,17 +191,17 @@ if __name__ == "__main__":
     result = []
     distance = calDistance(proxyPos, vehPos)
     transRate = min(5 * math.log2(1 + 2500 / distance), maxRate)
-    transTime = mem * 8 / 1000 / transRate
-    rsuWaits = {}
-    with open('rsus.csv', 'r') as file:
-        while True:
-            line = file.readline()
-            if len(line) == 0:
-                break
-            line = line.strip().split(' ')
-            for i in range(3, len(line)):
-                rsuWaits[line[0] + ';' + str(i - 2)] = (float(line[i]))
-    
+    transTime = mem * 8 / 1024 / transRate
+    waitMax = 0
+    for rsuCoord, wait in rsuWaits.items():
+        tmpwaitMax = copy.deepcopy(rsuWaits)
+        try:
+            tmpwaitMax[rsuCoord] += cpu / rsuList[rsuCoord]['cpu']
+            if calVariance(list(tmpwaitMax.values())) > waitMax:
+                waitMax = calVariance(list(tmpwaitMax.values()))
+        except:
+            pass
+
     # ----------------decision process----------------
     # -------here is a partial greedy algorithm-------
 
@@ -222,17 +231,22 @@ if __name__ == "__main__":
         serviceGain = calIntegralServiceRate(getRoadLength(serviceRoad, net, boundaries), rsuPos) / mem
         tmpWait = list(rsuWaits.values())
         # print(tmpWait[tmpWait.index(max(tmpWait))])
-        tmpWaitMax = copy.deepcopy(tmpWait)
-        tmpWaitMax[tmpWaitMax.index(max(tmpWaitMax))] += cpu / list(rsuList.values())[tmpWaitMax.index(max(tmpWaitMax))]['cpu'] / mem
         tmpWait[list(rsuWaits.keys()).index(rsu)] += cpu / property['cpu'] / mem
-        fairnessGain = 1 - calVariance(tmpWait) / calVariance(tmpWaitMax)
-        gainList[rsu] = 0.5 * serviceGain + 0.5 * fairnessGain
+        gainList[rsu] =CalMetric(serviceGain, tmpWait, waitMax)
         # print(gainList[rsu])
     sortedGainList = collections.OrderedDict(sorted(gainList.items(),key=lambda t:t[1], reverse=True))
     remainMem = mem
     decision = ''
     resultRelay = ''
     serviceRoad = ''
+    tmpLines = []
+    with open('rsus.csv', 'r') as file:
+        while True:
+            line = file.readline()
+            if len(line) == 0:
+                break
+            tmp = line.split(' ')
+            tmpLines.append(tmp)
     for rsu, gain in sortedGainList.items():
         # print(rsu, gain)
         # print(min(rsuList[rsu]['mem'], remainMem))
@@ -249,18 +263,40 @@ if __name__ == "__main__":
         if len(tmpResultRelay) == 0:
             tmpResultRelay += 'NULL'
         serviceRoad += serviceRoadList[rsu]
+        for tmp in tmpLines:
+            if tmp[0] == rsu.split(';')[0]:
+                core = int(rsu.split(';')[1])
+                tmpRelayTime = len(tmpRelay[1:]) * mem * ratio * 8 / 1024 / maxRate
+                tmpOperationTime = cpu * ratio / rsuList[rsu]['cpu']
+                if tmp[core] == '*':
+                    tmp[core] = taskName + '(0(' + str(int(transTime + tmpRelayTime + simTime + 7)) + ';'
+                else:
+                    tmp[core] += taskName + '(0(' + str(int(transTime + tmpRelayTime + simTime + 7)) + ';'
+                tmp[core + 5] = str(float(tmp[core + 5]) - round(mem * ratio, 2))
+                tmp[core + 9] = str(rsuList[rsu]['wait'] + transTime + tmpRelayTime + tmpOperationTime + simTime)
+                if core == 4:
+                    tmp[core + 9] += '\n'
+                break
         decision += '|'
         resultRelay += tmpResultRelay + '|'
         serviceRoad += '|'
         remainMem -= min(rsuList[rsu]['mem'], remainMem)
         if remainMem == 0:
             break
-    print(decision)
-    print(resultRelay)
-    print(serviceRoad)
-    send(decision, externalId + 'decision')
-    send(resultRelay, externalId + 'relay')
-    send(serviceRoad, externalId + 'service')
+    
+    with open('rsus.csv', 'w') as file:
+        file.write(''.join([' '.join(tmp) for tmp in tmpLines]))
+    if len(result) == 0:
+        with open('decision/' + taskName, 'w') as file:
+            file.write('1')
+    else:
+        with open('decision/' + taskName, 'w') as file:
+            file.write(str(proxyPos) + '\n' + decision + '\n' + resultRelay + '\n' + serviceRoad)
+
+    rparam.set("decision", decision[:-1])
+    rparam.set("relay", resultRelay[:-1])
+    rparam.set("service", serviceRoad[:-1])
+    return rparam
 
 
 

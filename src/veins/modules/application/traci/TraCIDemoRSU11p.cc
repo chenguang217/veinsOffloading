@@ -92,6 +92,9 @@ void TraCIDemoRSU11p::csv2variables(){
                     std::vector<std::string> nameState = split(tmpQueue[i], "(");
                     if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
                         std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                        std::ofstream outfile("sendbackLog\\" + toString(curPosition) + ";1", std::ios::app);
+                        outfile << nameState[0] << " time out, drop task." << std::endl;
+                        outfile.close();
                     }
                     else{
                         taskQueue1.push_back(nameState);
@@ -105,6 +108,9 @@ void TraCIDemoRSU11p::csv2variables(){
                     std::vector<std::string> nameState = split(tmpQueue[i], "(");
                     if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
                         std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                        std::ofstream outfile("sendbackLog\\" + toString(curPosition) + ";2", std::ios::app);
+                        outfile << nameState[0] << " time out, drop task." << std::endl;
+                        outfile.close();
                     }
                     else{
                         taskQueue2.push_back(nameState);
@@ -118,6 +124,9 @@ void TraCIDemoRSU11p::csv2variables(){
                     std::vector<std::string> nameState = split(tmpQueue[i], "(");
                     if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
                         std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                        std::ofstream outfile("sendbackLog\\" + toString(curPosition) + ";3", std::ios::app);
+                        outfile << nameState[0] << " time out, drop task." << std::endl;
+                        outfile.close();
                     }
                     else{
                         taskQueue3.push_back(nameState);
@@ -131,6 +140,9 @@ void TraCIDemoRSU11p::csv2variables(){
                     std::vector<std::string> nameState = split(tmpQueue[i], "(");
                     if(stod(nameState[2]) < simTime().dbl() && nameState[1] == "0"){
                         std::cout << "clear " << nameState[0] << " tranTime " << stod(nameState[2]) << " simTime " << simTime().dbl() << std::endl;
+                        std::ofstream outfile("sendbackLog\\" + toString(curPosition) + ";4", std::ios::app);
+                        outfile << nameState[0] << " time out, drop task." << std::endl;
+                        outfile.close();
                     }
                     else{
                         taskQueue4.push_back(nameState);
@@ -314,7 +326,10 @@ void TraCIDemoRSU11p::onTask(Task* frame)
         std::string externalId = newTask->getExternalId();
         std::string possibleRSU = newTask->getPossibleRSUs();
 
-        pc->setModuleName("rsuDecisionDynamicProgramCall");
+        // pc->setModuleName("rsuDecisionIndenpendent"); // indenpendent greedy offloading
+        // pc->setModuleName("rsuDecisionDynamicProgramCall"); // cooperative dynamic programing
+        // pc->setModuleName("rsuDecisionGreedyPartial"); // cooperative greedy algorithm
+        pc->setModuleName("rsuDecisionNearest"); // nearest first algorithm
         PythonCommunication::PythonParam pp;
         pp.set("rsuInfo", toString(newTask->getPossibleRSUs()));
         pp.set("vehPos", toString(newTask->getSenderPos()));

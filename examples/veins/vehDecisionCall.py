@@ -144,14 +144,14 @@ def vehDecision(param: PythonParam):
     # -----------decision process-----------
 
     position = [float(position.replace('(', '').replace(')', '').split(',')[0]), float(position.replace('(', '').replace(')', '').split(',')[1])]
-    theroMinTime = cpuRequirement / theoryCPUMax
+    theroMinTime = cpuRequirement * 0.1 / theoryCPUMax
     for eta in etaFinal:
         if eta[1] > theroMinTime:
             possibleNearest = eta[0]
             break
     else:
         possibleNearest = etaFinal[-1][0]
-    theoryMaxTime = cpuRequirement / theoryCPUMin
+    theoryMaxTime = cpuRequirement * 0.1 / theoryCPUMin
     for eta in etaFinal:
         if eta[1] > theoryMaxTime:
             possibleFarest = eta[0]

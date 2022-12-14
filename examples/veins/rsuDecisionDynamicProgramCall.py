@@ -37,17 +37,6 @@ def recieve(file_name):
         print(sn)
 
 def relay(position, target):
-    # relay0 = []
-    # for i in range(round(size[0] / 1000)):
-    #     for j in range(round(size[1] / 1000)):
-    #         distance = math.sqrt((position[0] - i * 1000 - 500) ** 2 + (position[1] - j * 1000 - 500) ** 2)
-    #         if distance <= 1000:
-    #             relay0.append([i * 1000 + 500, j * 1000 + 500])
-    # minJump = 16000
-    # for point in relay0:
-    #     if abs(target[0] - point[0] + target[1] - point[1]) < minJump:
-    #         minJump = abs(target[0] - point[0] + target[1] - point[1])
-    #         relayStart = point
     relayStart = position
     xlength = relayStart[0] - target[0]
     ylength = relayStart[1] - target[1]
@@ -70,40 +59,22 @@ def calDistance(node1, node2):
 def calVariance(data):
     return np.var(data)
 
-def calFairnessGain(rsu, rsuWaits, operationTime, variance):
-    tmpWait = []
-    for k, v in rsuWaits.items():
-        if k == rsu.split(';')[0]:
-            tmpWait.append(v + operationTime)
-        else:
-            tmpWait.append(v)
-    tmpVariance = calVariance(tmpWait)
-    return 1 / tmpVariance
-
 def calServiceRate(target, rsuPos):
     serviceDist = calDistance(target, rsuPos)
     return (5 * math.log2(1 + 2500 / serviceDist)) / maxRate
 
 def getRoadLength(roadId, net, boundaries):
     road = net.getEdge(roadId)
-    # length = road.getLength()
-    # fromNode = road.getFromNode().getCoord()
-    # toNode = road.getToNode().getCoord()
-    # fromNode = [fromNode[0] - boundaries[0], boundaries[3] - fromNode[1]]
-    # toNode = [toNode[0] - boundaries[0], boundaries[3] - toNode[1]]
     shapeNodes = []
     for node in road.getShape():
         shapeNodes.append([node[0] - boundaries[0], boundaries[3] - node[1]])
     return shapeNodes
 
 def calIntegralServiceRate(shapeNodes, rsuPos):
-    xSum = 0
-    ySum = 0
+    tmpQos = 0
     for point in shapeNodes:
-        xSum += point[0]
-        ySum += point[1]
-    servicePoint = [xSum / len(shapeNodes), ySum / len(shapeNodes)]
-    return calServiceRate(servicePoint, rsuPos)
+        tmpQos += calServiceRate(point, rsuPos)
+    return tmpQos / len(shapeNodes)
 
 def CalMetric(serviceRate, waits, waitMax):
 

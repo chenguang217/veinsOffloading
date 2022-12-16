@@ -106,15 +106,18 @@ def calProfit(ratio, rsuIndex, allocateRatio, currentState, cpu, mem, rsuList, b
         relayTime += mem * tmpState[list(rsuList.keys())[rsuIndex]][0] * 8 / 1024 / maxRate
     tmpEtaFinal = []
     tmpEtaRoad = []
+    serviceRoad = ''
+    tmpMinDis = 1000
     for eta in range(len(etaFinal)):
         if calDistance(etaFinal[eta][0], rsuPos) <= 1000:
             tmpEtaFinal.append(etaFinal[eta])
             tmpEtaRoad.append(etaRoad[eta - 1])
     for eta in range(len(tmpEtaFinal)):
         if tmpEtaFinal[eta][1] > operationTime + transTime + relayTime:
-            serviceRoad = tmpEtaRoad[eta][0]
-            break
-    else:
+            if calDistance(tmpEtaFinal[eta][0], rsuPos) < tmpMinDis:
+                tmpMinDis = calDistance(tmpEtaFinal[eta][0], rsuPos)
+                serviceRoad = tmpEtaRoad[eta][0]
+    if serviceRoad = '':
         serviceRoad = tmpEtaRoad[-1][0]
     tmpState[list(rsuList.keys())[rsuIndex]][1] = serviceRoad
 

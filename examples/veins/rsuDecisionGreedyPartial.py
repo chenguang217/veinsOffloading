@@ -218,13 +218,16 @@ def rsuDecision(param: PythonParam):
         relayTime = 0
         for i in range(len(relays) - 1):
             relayTime += mem * 8 / 1000 / maxRate
+        serviceRoad = ''
+        tmpMinDis = 1000
         for eta in range(len(etaFinal)):
             if etaFinal[eta][1] > operationTime + transTime + relayTime:
-                target = etaFinal[eta - 1][0]
-                serviceRoad = etaRoad[eta - 1][0]
-                serviceRoadList[rsu] = serviceRoad
-                break
-        else:
+                if calDistance(etaFinal[eta][0], rsuPos) < tmpMinDis:
+                    tmpMinDis = calDistance(etaFinal[eta][0], rsuPos)
+                    target = etaFinal[eta - 1][0]
+                    serviceRoad = etaRoad[eta - 1][0]
+                    serviceRoadList[rsu] = serviceRoad
+        if serviceRoad = '':
             target = etaFinal[-1][0]
             serviceRoad = etaRoad[-1][0]
             serviceRoadList[rsu] = serviceRoad
